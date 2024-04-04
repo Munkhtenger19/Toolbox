@@ -1,0 +1,43 @@
+# model:
+#   type: GNN  # Model type
+#   layers: 2  # Number of layers
+#   hidden: 64  # Number of hidden units
+#   dropout: 0.5  # Dropout rate
+  
+# training:
+#   epochs: 200  # Number of training epochs
+#   learning_rate: 0.01  # Learning rate
+#   weight_decay: 5e-4  # Weight decay
+#   early_stopping: True  # Whether to use early stopping
+#   patience: 10  # Patience for early stopping
+
+# dataset:
+#   dataset: 'Cora'  # Dataset to use
+#   split: 'public'  # Split type (public, random, etc.)
+#   seed: 42  # Seed for random number generator
+
+# logging:
+#   log_interval: 10  # Interval for logging training status
+#   save_model: True  # Whether to save the trained model
+#   save_path: '/path/to/save/model'  # Path to save the trained model
+
+model:
+  name: 'GCN'  # Model name
+  params:
+    hidden_size: 16  # Size of hidden layers
+    num_layers: 2  # Number of layers
+    dropout: 0.5  # Dropout rate
+    wtf: 0.5  # WTF rate
+
+optimizer:
+    name: 'Adam'  # Optimizer to use
+    lr: 0.01  # Learning rate
+    weight_decay: 0.00055  # Weight decay
+    
+
+# dataset:
+#   name: 'Cora'  # Dataset name
+#   format: 'PyG'  # Dataset format
+#   task: 'node'  # Task type
+#   dir: './datasets'  # Directory to load dataset from
+
