@@ -24,20 +24,21 @@
 model:
   name: 'GCN'  # Model name
   params:
-    hidden_size: 16  # Size of hidden layers
+    hidden_channels: 16  # Size of hidden layers
+    out_channels: 1  # Number of classes
     num_layers: 2  # Number of layers
     dropout: 0.5  # Dropout rate
-    wtf: 0.5  # WTF rate
 
 optimizer:
-    name: 'Adam'  # Optimizer to use
-    lr: 0.01  # Learning rate
-    weight_decay: 0.00055  # Weight decay
+    name: 'adam'  # Optimizer to use
+    params:
+      base_lr: 0.01  # Learning rate
+      weight_decay: 0.00055  # Weight decay
     
 
-# dataset:
-#   name: 'Cora'  # Dataset name
-#   format: 'PyG'  # Dataset format
-#   task: 'node'  # Task type
-#   dir: './datasets'  # Directory to load dataset from
+dataset:
+  name: 'Cora'  # Dataset name
+  format: 'PyG'  # Dataset format
+  task: 'node'  # Task type
+  dir: './datasets'  # Directory to load dataset from
 

@@ -1,16 +1,33 @@
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from torch_geometric.nn import GATConv, GCNConv
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
-from model import BaseModel
-from register import register_architecture
+from customize.model import BaseModel
+from customize.register import register_architecture
 
-# class ModelArchitecture(nn.Module):
-#     def __init__(self, model_name, num_classes, pretrained=True):
-#         self.model_name = model_name
-#         self.num_classes = num_classes
-#         self.pretrained = pretrained
+@register_architecture("GCN")
+class GCN(BaseModel):
+    def __init__(self, in_channels: int, out_channels: int, hidden_channels: int, num_layers: int, dropout: float = 0.5):
+        super().__init__()
+        self.GCNConv = GCNConv(in_channels=in_channels, out_channels=hidden_channels)
+        self.layers = nn.ModuleList([GCNConv(hidden_channels, hidden_channels) for _ in range(num_layers)])
+        self.dropout = nn.Dropout(dropout)
+        self.linear = nn.Linear(hidden_channels, out_channels)
+        
+    def forward(self, batch):
+        x, edge_index = batch.x, batch.edge_index
+        x = self.GCNConv(x, edge_index)
+        for layer in self.layers:
+            x = F.relu(layer(x, edge_index))
+            x = self.dropout(x)
+        return self.linear(x), batch.y
+    
+    def compute_loss(self, pred, true):
+        return F.binary_cross_entropy_with_logits(pred, true), torch.sigmoid(pred)
 
-@register_architecture('gcn')
+
+@register_architecture('gcn2')
 class GCN(BaseModel):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2):
         super().__init__()
@@ -36,6 +53,7 @@ class GCN(BaseModel):
         x = F.dropout(x, training=self.training)
         x = self.conv2(x, edge_index, edge_weight)
         return x
+    
     def _extract_model_info(self):
         layers = list(self.modules())
         for idx, m in enumerate(self.modules()):
@@ -43,6 +61,6 @@ class GCN(BaseModel):
     
 model = GCN(16, 16, 16)
 print(model.hparams)
-# parameters = list(self.modules())
 
+# parameters = list(self.modules())
 # model._extract_model_info()

@@ -42,8 +42,9 @@ def register_module(category: str, key: str, module: ModuleType = None) -> Union
     return register_by_decorator
 
 
-register_act = partial(register_module, "act")
+register_act = partial(register_module, "activation")
 register_node_encoder = partial(register_module, "node_encoder")
 register_edge_encoder = partial(register_module, "edge_encoder")
 register_optimizer = partial(register_module, "optimizer")
 register_architecture = partial(register_module, "architecture")
+
