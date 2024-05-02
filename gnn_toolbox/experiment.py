@@ -3,6 +3,8 @@ import yaml
 from itertools import product
 from utils import DotDict
 from pathlib import Path
+
+SPECIAL_KEYS = ['attack.nodes']
 CONFIG_VALUES = ['output_dir', 
                  'experiment_templates',
                  ]
@@ -69,7 +71,7 @@ def generate_experiments_from_yaml(yaml_file):
         experiments_config = yaml.safe_load(f)
 
     def _generate_combinations(config_dict):
-        parameter_dict = { key:value for key, value in config_dict.items() if isinstance(value, list)}
+        parameter_dict = { key:value for key, value in config_dict.items() if isinstance(value, list) and key not in SPECIAL_KEYS}
         for combination in product(*(parameter_dict.values())):
             yield dict(zip(parameter_dict.keys(), combination))
 
@@ -86,7 +88,7 @@ def generate_experiments_from_yaml(yaml_file):
             for key, value in combination.items():
                 experiment[key] = value
             experiment = DotDict(unflatten(experiment))
-            experiment_dir = setup_directories(experiments_config['output_dir'],experiment['name'], id)
+            experiment_dir = setup_directories(experiments_config['output_dir'], experiment['name'], id)
             all_experiments.append(experiment)
             experiment_dirs.append(experiment_dir)
 
@@ -100,8 +102,8 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 #     return base_path
 
 def setup_directories(base_dir, experiment_name, id):
+    print('I got called')
     base_dir = Path(base_dir)
-    experiment_dir = base_dir / experiment_name
     
     # existing_dirs = [d for d in base_dir.glob(experiment_name + '*') if d.is_dir()]
     # id = 0
@@ -110,7 +112,7 @@ def setup_directories(base_dir, experiment_name, id):
     #     id = max([int(Path(existing_dir).name.split('_')[-1]) for existing_dir in existing_dirs]) + 1
     
     # Create a new directory with the next suffix
-    new_experiment_dir = base_dir / f"{experiment_name}_{id}"
+    new_experiment_dir = base_dir / f"{experiment_name}_{id+1}"
     new_experiment_dir.mkdir(parents=True, exist_ok=True)
     
     return new_experiment_dir
@@ -139,10 +141,15 @@ def tensorboard_logger():
 
 
 # # Join the directory path and your file name
-file_path = os.path.join(dir_path, 'good.yaml')
+file_path = os.path.join(dir_path, 'good_1.yaml')
 b = generate_experiments_from_yaml(file_path)
-len(b)
+# print(len(b))
 i = b[0]
+# print(i)
+# s = i.attack.node
+# q = i.attack.params
+# print(s, q)
+
 # print()
 # print(i.model.params)
 # i['model']['params'].update({
@@ -183,9 +190,8 @@ d = {
 
 }
 
-d['model']['params'].update({
-    'sda':2
-})
+# q = (d['trainer']['wtf'])
+# print(q)
 # print(d)
 
 # next step is to use this dict to run experiment

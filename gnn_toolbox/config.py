@@ -17,6 +17,8 @@ from torch_geometric.seed import seed_everything
 import copy
 from torch.utils.tensorboard import SummaryWriter
 from experiment_logger import LogExperiment
+from storage import ArtifactManager
+import logging
 
 class ConfigManager:
     _global_config = {}
@@ -29,7 +31,7 @@ class ConfigManager:
     def get_config():
         return ConfigManager._global_config
     
-def run_experiment(experiment, experiment_dir):
+def run_experiment(experiment, experiment_dir, artifact_manager):
     writer = SummaryWriter(f"{experiment_dir}")
     ConfigManager.update_config(experiment)
     current_config = ConfigManager.get_config()
@@ -54,8 +56,8 @@ def run_experiment(experiment, experiment_dir):
     # save_config
     
     model = create_model(current_config)
-    
-    
+    clean_result = clean_train(current_config, artifact_manager, model, attr, adj, labels, split, device, writer)
+    # clean_result = train_and_evaluate(model, attr, adj, attr, adj, labels, split, device, writer, current_config.training, current_config.optimizer.params)
     # endees
     # attack_model = create_attack(current_config.attack.name)(attr = attr, adj = adj, labels = labels, idx_attack = split['train'], model = model, device = device, data_device= 0, make_undirected = True)
     # n_perturbations = int(round(current_config.attack.epsilon * num_edges))
@@ -80,32 +82,52 @@ def run_experiment(experiment, experiment_dir):
         
         # print('========================================')
         # print('perturbed accuracy:', accuracy)
+    
+    if(current_config.attack.type == 'poison'):
+        pert_adj, pert_attr = initialize_attack(current_config, attr, adj, labels, split, model, device, num_edges)
         
-    if(current_config.attack.attack_type == 'poison'):
-        pert_adj, pert_attr = initialize_attack(current_config, attr, adj, labels, split['train'], model, device, num_edges)
-        
-        clean_result = train_and_evaluate(model, attr, adj, attr, adj, labels, split, device, writer, current_config.training)
+        print(pert_adj)
         # print('========================================')
         # print('Clean accuracy:', result[-1]['accuracy_test'], clean_accuracy)
-        perturbed_result = train_and_evaluate(model, pert_attr, pert_adj, attr, adj, labels, split, device, writer, current_config.training)
+        
+        # perturbed_result = train_and_evaluate(model, pert_attr, pert_adj, attr, adj, labels, split, device, writer, current_config, retrain=True, is_clean_model=False)
+        
         # print('========================================')
         # print('Perturbed accuracy:', result[-1]['accuracy_test'], perturbed_accuracy)
         
-    # elif(current_config.attack.attack_type == 'evasion'):
-    #     pert_attr, pert_adj = initialize_attack(current_config, attr, adj, labels, split['test'], model, device, num_edges)
+    elif(current_config.attack.type == 'evasion'):
+        # * use the clean train model and check against pertubed test
+        
+        pert_attr, pert_adj = initialize_attack(current_config, attr, adj, labels, split, model, device, num_edges)
     #     clean_accuracy = train_and_evaluate(model, attr, adj, attr, adj, labels, split, device, writer, current_config.training)
     #     print('========================================')
     #     print('Clean accuracy:', clean_accuracy)
     #     perturbed_accuracy = train_and_evaluate(model, attr, adj, pert_attr, pert_adj, labels, split, device, writer, current_config.training)
     #     print('========================================')
     #     print('Perturbed accuracy:', perturbed_accuracy)
-    result = {
+    all_result = {
         'clean_result': clean_result,
-        'perturbed_result': perturbed_result,
+        'perturbed_result': pert_adj,
     }
-    return result, current_config
+    # log to tensorboard
+    return all_result, current_config
 
-def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels, split, device, writer, training_config):
+def clean_train(current_config, artifact_manager, model, attr, adj, labels, split, device, writer):
+    model_path, result = artifact_manager.model_exists(current_config)
+    if model_path:
+        print('found model2')
+        model.load_state_dict(torch.load(model_path))
+        model.to(device)
+        # now transfer the summary writer to the another one
+        # no need for acc
+        # print('accuracy after model retrieved: ', evaluate_global(model, attr, adj, labels, split['test']), current_config.device)
+        return result
+    
+    result = train_and_evaluate(model, attr, adj, attr, adj, labels, split, device, writer, current_config, retrain=False, is_clean_model=True)
+    
+    return result
+    
+def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels, split, device, writer, current_config, retrain, is_clean_model):
     # Move data to the device (GPU or CPU)
     train_attr = train_attr.to(device)
     train_adj = train_adj.to(device)
@@ -113,33 +135,199 @@ def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels
     test_adj = test_adj.to(device)
     labels = labels.to(device)
     
-    copied_model = copy.deepcopy(model).to(device)
-    for module in copied_model.modules():
-        if hasattr(module, 'reset_parameters'):
-            module.reset_parameters()
+    if(retrain):
+        model = copy.deepcopy(model).to(device)
+        for module in model.modules():
+            if hasattr(module, 'reset_parameters'):
+                module.reset_parameters()
+    # check for the model        
+    
+    # * make copy of optimizer
+    
+    
     # Train the model
-    result = train(model=copied_model, attr=train_attr, adj=train_adj, labels=labels, idx_train=split['train'], idx_val=split['valid'], idx_test=split['test'], writer= writer, **training_config)
+    result = train(model=model, attr=train_attr, adj=train_adj, labels=labels, idx_train=split['train'], idx_val=split['valid'], idx_test=split['test'], writer= writer, **current_config.training, **current_config.optimizer.params)
 
     # Evaluate the model
-    _, accuracy = evaluate_global(model=copied_model, attr=test_attr, adj=test_adj, labels=labels, idx_test=split['test'])
+    _, accuracy = evaluate_global(model=model, attr=test_attr, adj=test_adj, labels=labels, idx_test=split['test'], device=device)
     
+    
+        
     result.append({
         'Test accuracy after best model retrieval': accuracy
     })
+
+    artifact_manager.save_model(model, current_config, result, is_clean_model)
+    
     return result
 
-def initialize_attack(experiment, attr, adj, labels, idx_attack, model, device, num_edges, data_device = 0, make_undirected=True):
+def initialize_attack(experiment, attr, adj, labels, split, model, device, num_edges, data_device = 0, make_undirected=True):
     attack_model = create_attack(experiment.attack.name)(
-        attr=attr, adj=adj, labels=labels, idx_attack=idx_attack,
-        model=model, device=device, data_device=data_device, make_undirected=make_undirected
+        attr=attr, adj=adj, labels=labels, idx_attack=split['train'],
+        model=model, device=device, data_device=data_device, 
+        # make_undirected=make_undirected, 
+        **getattr(experiment.attack, 'params', {})
     )
-    n_perturbations = int(round(experiment.attack.epsilon * num_edges))
-    attack_model.attack(n_perturbations)
-    return attack_model.get_perturbations()
+    if experiment.attack.scope == 'global':
+        n_perturbations = int(round(experiment.attack.epsilon * num_edges))
+        attack_model.attack(n_perturbations)
+        return attack_model.get_perturbations()
+    # n_perturbations = int(round(experiment.attack.epsilon * num_edges))
+    
+    # if(experiment.attack.scope == 'local' and experiment.attack.type =='poison'):
+    #     try:
+    #         nodes = [int(i) for i in experiment.attack.nodes]
+    #     except KeyError:
+    #         nodes = get_local_attack_nodes(attr, adj, labels, model, idx_attack, device, attack_type=experiment.attack.type, topk=int(experiment.attack.nodes_topk), min_node_degree=int(1/experiment.attack.epsilons))
+    #     for node in nodes:
+    #         attack_model.attack(node, n_perturbations)
+    
+    # attack_model.attack(n_perturbations)
+    # return attack_model.get_perturbations()
+
+    # * if poison, train the model on the clean data, get the nodes if they are not given. Then I need to perturb the node and train on it
+    # * idx_attack is just for global attack
+    
+    if(experiment.attack.scope == 'local' and experiment.attack.type =='poison'):
+        results = []
+        eps = experiment.attack.epsilon
+        nodes = experiment.attack.nodes
+        if nodes is None:
+            epsilon_inverse = int(1 / eps)
+            
+            min_node_degree = max(2, epsilon_inverse) if experiment.attack.min_node_degree is None else experiment.attack.min_node_degree
+            
+            topk = int(experiment.attack.topk) if experiment.attack.topk is not None else 10
+
+            nodes = get_local_attack_nodes(attr, adj, labels, model, split['train'], device, topk=topk, min_node_degree=min_node_degree)
+
+        nodes = [int(i) for i in nodes]
+        for node in nodes:
+            degree = adj[node].sum()
+            n_perturbations = int((eps * degree).round().item())
+            if n_perturbations == 0:
+                print(
+                    f"Skipping attack for model '{model}' using {experiment.attack.name} with eps {eps} at node {node}.")
+                continue
+            try:
+                attack_model.attack(n_perturbations, node_idx=node)
+            except Exception as e:
+                logging.exception(e)
+                logging.error(
+                    f"Failed to attack model '{model}' using {experiment.attack.name} with eps {eps} at node {node}.")
+                continue
+            
+            # odoo perturbed data deeree train hiiged result avna. Deer bolhor trained model deerees perturbed data avj bna
+            
+            # if it is poison, give the attack trained model to get the perturbed adj, perturbed feature and train on it and see if it incorrectly classifies the node
+            perturbed_adj, perturbed_attr = attack_model.get_perturbations()
+            
+            victim = copy.deepcopy(model).to(device)
+            for module in victim.modules():
+                if hasattr(module, 'reset_parameters'):
+                    module.reset_parameters()
+            
+            _ = train(model=victim, attr=perturbed_attr.to(device), adj=perturbed_adj.to(device), labels=labels.to(device), idx_train=split['train'], idx_val=split['valid'], idx_test=split['test'], **experiment.training, **experiment.optimizer.params)
+            
+            # hervee eniig attacked_model-oor solichihvol 
+            attack_model.set_eval_model(victim)
+            logits_poisoning, _ = attack_model.evaluate_local(node)
+            attack_model.set_eval_model(model)
+            
+            # logits, initial_logits = adversary.evaluate_local(node)
+            results.append({
+                'attacked node': node,
+                'logits': logits_poisoning.cpu().numpy().tolist(),
+                **attack_model.classification_statistics(
+                    logits_poisoning, labels[node].long()),
+                
+                # 'node': node,
+                # 'degree': degree.item(),
+                # 'n_perturbations': n_perturbations,
+                # 'initial_logits': initial_logits,
+                # 'logits_poisoning': logits_poisoning,
+            })
+            
+            results.append({
+                'pyg_margin': attack_model._probability_margin_loss(victim(attr.to(device), adj.to(device)),labels, [node]).item()
+            })
+            
+    results.append({
+        'all attacked nodes': nodes
+    })
+    print('results', results)
+    return results, None
+
+def local_attack():
+    pass
+
+def get_local_attack_nodes(attr, adj, labels, model, idx_test, device, topk=10, min_node_degree=2):
+    # if attack_type == 'poison':
+    #     model = model.to(device)
+    #     train(model, attr, adj, labels, idx_test, idx_test, idx_test, 0.01, 0.0005, 300, 300, None, 10)
+        
+    # elif attack_type == 'evasion':
+    #     with torch.no_grad():
+    #         model = model.to(device)
+    #         model.eval()
+
+    #         logits = model(attr.to(device), adj.to(device))[idx_test]
+
+    #         acc = accuracy(logits.cpu(), labels.cpu()[idx_test], np.arange(logits.shape[0]))
+
+    logits, acc = evaluate_global(model, attr, adj, labels, idx_test, device)
+    
+    logging.info(f"Sample Attack Nodes for model with accuracy {acc:.4}")
+
+    max_confidence_nodes_idx, min_confidence_nodes_idx, rand_nodes_idx = sample_attack_nodes(
+        logits, labels[idx_test], idx_test, adj, topk,  min_node_degree)
+    tmp_nodes = np.concatenate((max_confidence_nodes_idx, min_confidence_nodes_idx, rand_nodes_idx))
+    logging.info(
+        f"Sample the following attack nodes:\n{max_confidence_nodes_idx}\n{min_confidence_nodes_idx}\n{rand_nodes_idx}")
+    return tmp_nodes
+
+def sample_attack_nodes(logits: torch.Tensor, labels: torch.Tensor, nodes_idx,
+                        adj: SparseTensor, topk: int, min_node_degree: int):
+    assert logits.shape[0] == labels.shape[0]
+    if isinstance(nodes_idx, torch.Tensor):
+        nodes_idx = nodes_idx.cpu()
+    node_degrees = adj[nodes_idx.tolist()].sum(-1)
+    print('len(node_degrees)', len(node_degrees))
+    suitable_nodes_mask = (node_degrees >= min_node_degree).cpu()
+
+    labels = labels.cpu()[suitable_nodes_mask]
+    confidences = F.softmax(logits.cpu()[suitable_nodes_mask], dim=-1)
+
+    correctly_classifed = confidences.max(-1).indices == labels
+
+    logging.info(
+        f"Found {sum(suitable_nodes_mask)} suitable '{min_node_degree}+ degree' nodes out of {len(nodes_idx)} "
+        f"candidate nodes to be sampled from for the attack of which {correctly_classifed.sum().item()} have the "
+        "correct class label")
+    print(
+        f"Found {sum(suitable_nodes_mask)} suitable '{min_node_degree}+ degree' nodes out of {len(nodes_idx)} "
+        f"candidate nodes to be sampled from for the attack of which {correctly_classifed.sum().item()} have the "
+        "correct class label")
+    print(sum(suitable_nodes_mask))
+    assert sum(suitable_nodes_mask) >= (topk * 4), \
+        f"There are not enough suitable nodes to sample {(topk*4)} nodes from"
+
+    _, max_confidence_nodes_idx = torch.topk(confidences[correctly_classifed].max(-1).values, k=topk)
+    _, min_confidence_nodes_idx = torch.topk(-confidences[correctly_classifed].max(-1).values, k=topk)
+
+    rand_nodes_idx = np.arange(correctly_classifed.sum().item())
+    rand_nodes_idx = np.setdiff1d(rand_nodes_idx, max_confidence_nodes_idx)
+    rand_nodes_idx = np.setdiff1d(rand_nodes_idx, min_confidence_nodes_idx)
+    rnd_sample_size = min((topk * 2), len(rand_nodes_idx))
+    rand_nodes_idx = np.random.choice(rand_nodes_idx, size=rnd_sample_size, replace=False)
+
+    return (np.array(nodes_idx[suitable_nodes_mask][correctly_classifed][max_confidence_nodes_idx])[None].flatten(),
+            np.array(nodes_idx[suitable_nodes_mask][correctly_classifed][min_confidence_nodes_idx])[None].flatten(),
+            np.array(nodes_idx[suitable_nodes_mask][correctly_classifed][rand_nodes_idx])[None].flatten())
+
 
 # ! Make the optimizer custom, not only Adam
-def train(model, attr, adj, labels, idx_train, idx_val, idx_test,
-          lr, weight_decay, patience, max_epochs, writer,display_step=10):
+def train(model, attr, adj, labels, idx_train, idx_val, idx_test, lr, weight_decay, patience, max_epochs, writer=None, display_step=10):
     """Train a model using either standard training.
     Parameters
     ----------
@@ -196,6 +384,7 @@ def train(model, attr, adj, labels, idx_train, idx_val, idx_test,
         # trace_loss_train.append(loss_train.detach().item())
         # trace_loss_val.append(loss_val.detach().item())
 
+        # * we can run through the different metrics and append them to the results array
         train_acc = accuracy(logits, labels, idx_train)
         val_acc = accuracy(logits, labels, idx_val)
         test_acc = accuracy(logits, labels, idx_test)
@@ -219,11 +408,14 @@ def train(model, attr, adj, labels, idx_train, idx_val, idx_test,
             "accuracy_val": val_acc,
             "accuracy_test": test_acc,
         }
-        tensorboard_log(writer, result)
+        if writer:
+            tensorboard_log(writer, result)
         results.append(result)
 
     # restore the best validation state
     model.load_state_dict(best_state)
+    # save the model
+    
     return results
 
 def tensorboard_log(writer, results):
@@ -235,13 +427,15 @@ def evaluate_global(model,
                     attr: TensorType["n_nodes", "n_features"],
                     adj: Union[SparseTensor, TensorType["n_nodes", "n_nodes"]],
                     labels: TensorType["n_nodes"],
-                    idx_test: Union[List[int], np.ndarray]):
+                    idx_test: Union[List[int], np.ndarray],
+                    device):
     """
     Evaluates any model w.r.t. accuracy for a given (perturbed) adjacency and attribute matrix.
     """
+    model = model.to(device)
     model.eval()
     
-    pred_logits_target = model(attr, adj)[idx_test]
+    pred_logits_target = model(attr.to(device), adj.to(device))[idx_test]
 
     acc_test_target = accuracy(pred_logits_target.cpu(), labels.cpu()[idx_test], np.arange(pred_logits_target.shape[0]))
 
@@ -267,23 +461,25 @@ def accuracy(logits: torch.Tensor, labels: torch.Tensor, split_idx: np.ndarray) 
     return (logits.argmax(1)[split_idx] == labels[split_idx]).float().mean().item()
 
 if __name__ == "__main__":
-    try:
-        args = parse_args()
-        # make main output directory
+
+    args = parse_args()
+    # make it work for multiple yaml files
+    
+    experiments, experiment_dirs, output_dir = generate_experiments_from_yaml(args.cfg_file)
+    print(f"Running {len(experiments)} experiments.")
+    results = []
+    # * cache here is hardcoded, should be given in each file
+    artifact_manager = ArtifactManager('cache')
+    for experiment, curr_dir in zip(experiments, experiment_dirs):
         
-        experiments, experiment_dirs, output_dir = generate_experiments_from_yaml(args.cfg_file)
-        
-        results = []
-        for experiment, curr_dir in zip(experiments, experiment_dirs):
-            # make each different experiment directory
-            # experiment_dir = setup_directories(output_dir, experiment['name'])
-            # 
-            result, experiment_cfg = run_experiment(experiment, curr_dir)
-            # * here make it log the results
-            LogExperiment(curr_dir, experiment_cfg, result)
-        print("All experiments completed successfully.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+        # make each different experiment directory
+        # experiment_dir = setup_directories(output_dir, experiment['name'])
+        # 
+        result, experiment_cfg = run_experiment(experiment, curr_dir, artifact_manager)
+        # * here make it log the results
+        LogExperiment(curr_dir, experiment_cfg, result)
+    print("All experiments completed successfully.")
+
         
     # print('New experiment which you doing')
     # from torch_geometric.datasets import Planetoid
