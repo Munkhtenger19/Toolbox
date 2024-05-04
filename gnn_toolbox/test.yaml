@@ -37,8 +37,8 @@ optimizer:
     
 
 dataset:
-  name: 'Cora'  # Dataset name
+  name: 'cora'  # Dataset name
   format: 'PyG'  # Dataset format
-  task: 'node'  # Task type
+  prediction_target: 'node'  # Task type
   dir: './datasets'  # Directory to load dataset from
 

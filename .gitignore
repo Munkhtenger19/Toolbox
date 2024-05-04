@@ -1,4 +1,11 @@
-/datasets
+**/datasets
 **/__pycache__
-/lightning_logs
-/customize/__pycache__
+**/lightning_logs
+/runs
+**/mlruns
+**/mlartifacts
+*.ckpt
+*.log
+*.json
+*.pt
+**/*tfevents*

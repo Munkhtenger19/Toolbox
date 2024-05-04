@@ -6,13 +6,14 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from pytorch_lightning import LightningModule
 
-from config_def import cfg
+from customize.config_def import cfg
 from customize.optimizer import register_optimizer
 from customize.register import registry
 
 class BaseModel(LightningModule):
-    def __init__(self, **kwargs):
+    def __init__(self, config, **kwargs):
         super().__init__()
+        self.config = config
         self.save_hyperparameters()
         
         # self.train_acc = Accuracy(task=cfg., num_classes=out_channels)
@@ -27,7 +28,11 @@ class BaseModel(LightningModule):
     
     
     def configure_optimizers(self):
-        return registry['optimizer'][cfg.optimizer.name](self.parameters(), **cfg.optimizer.params)
+        # Configure optimizer using the local config
+        optimizer_name = self.config['optimizer']['name']
+        optimizer_params = self.config['optimizer']['params']
+        optimizer_class = registry['optimizer'][optimizer_name]
+        return optimizer_class(self.parameters(), **optimizer_params)
         
     # def compute_loss(self, pred, true):
     #     raise NotImplementedError
@@ -37,6 +42,7 @@ class BaseModel(LightningModule):
         pred, true = self(batch)
         loss, pred_score = compute_loss(pred, true)
         step_end_time = time.time()
+        self.log(split, loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return dict(loss=loss, true=true, pred_score=pred_score.detach(),
                     step_end_time=step_end_time)
 

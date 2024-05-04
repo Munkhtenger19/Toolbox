@@ -1,0 +1,64 @@
+output_dir: ./output  # Directory to save the output files
+experiment_templates:
+  - name: Vanilla GCN against DICE
+    seed: [0, 1]
+    device: cuda
+
+    model:
+      name: GCN
+      params:
+        hidden_channels: [32, 64]
+    
+    dataset:
+      name: [cora, citeseer]
+      path: ./datasets
+
+    attack:
+      scope: global
+      name: DICE
+      type: poison
+      epsilon: [0.05, 0.1]
+
+    evaluation:
+      metrics: ['accuracy']
+
+    training:
+      max_epochs: [300]
+      patience: 100
+    
+    optimizer:
+      name: Adam
+      params:
+        lr: [0.01]
+        weight_decay: [0.0005]
+    
+
+  # - name: GAT Robustness Experiment
+  #   seed: [0, 1]
+  #   device: cuda
+
+  #   model:
+  #     name: GAT
+  #     params:
+  #       hidden_channels: [64, 128]
+    
+  #   dataset:
+  #     name: cora
+  #     path: ./datasets
+
+  #   attack:
+  #     name: DICE
+  #     attack_type: poison
+  #     epsilon: [0.05, 0.1, 0.2]
+
+  #   evaluation:
+  #     metrics: ['accuracy']
+
+  #   training:
+  #     max_epochs: 300
+  #     lr: 0.001
+  #     weight_decay: 0.0005
+  #     patience: 300
+  
+  
+  

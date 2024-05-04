@@ -5,7 +5,7 @@ from customize.utils import create_model, create_attack
 from PyG_to_sci_sparse import prep_graph
 import torch
 from torchtyping import TensorType
-from typing import Union, List
+from typing import Union, List, Dict
 from torch_sparse import SparseTensor
 import numpy as np
 from customize.data import load_dataset, register_dataset
@@ -56,7 +56,16 @@ def run_experiment(experiment, experiment_dir, artifact_manager):
     # save_config
     
     model = create_model(current_config)
+    
+    _, accuracy = evaluate_global(model=model, attr=attr, adj=adj, labels=labels, idx_test=split['test'], device=device) 
+    
+    print('untrained model accuracy', accuracy)
+    
     clean_result = clean_train(current_config, artifact_manager, model, attr, adj, labels, split, device, writer)
+    
+    _, accuracy = evaluate_global(model=model, attr=attr, adj=adj, labels=labels, idx_test=split['test'], device=device) 
+    
+    print('trained model accuracy', accuracy)
     # clean_result = train_and_evaluate(model, attr, adj, attr, adj, labels, split, device, writer, current_config.training, current_config.optimizer.params)
     # endees
     # attack_model = create_attack(current_config.attack.name)(attr = attr, adj = adj, labels = labels, idx_attack = split['train'], model = model, device = device, data_device= 0, make_undirected = True)
@@ -82,23 +91,36 @@ def run_experiment(experiment, experiment_dir, artifact_manager):
         
         # print('========================================')
         # print('perturbed accuracy:', accuracy)
-    
-    if(current_config.attack.type == 'poison'):
-        pert_adj, pert_attr = initialize_attack(current_config, attr, adj, labels, split, model, device, num_edges)
-        
-        print(pert_adj)
+    perturbed_result = None
+    if(current_config.attack.scope == 'global'):
+        # poisoning
+        if current_config.attack.type == 'poison':
+            pert_adj, pert_attr = global_attack(current_config, attr, adj, labels, split['train'], model, device, num_edges)
+            
+            perturbed_result = train_and_evaluate(model, pert_attr, pert_adj, attr, adj, labels, split, device, writer, current_config, retrain=True, is_unattacked_model=False)
+        elif current_config.attack.type == 'evasion':
+            pert_adj, pert_attr = global_attack(current_config, attr, adj, labels, split['test'], model, device, num_edges)
+            
+            logits, accuracy = evaluate_global(model=model, attr=pert_attr, adj=pert_adj, labels=labels, idx_test=split['test'], device=device)
+            
+            perturbed_result ={
+                'logits': logits.cpu().numpy().tolist(),
+                'accuracy': accuracy,
+            }
+            
+        # print(pert_adj)
         # print('========================================')
         # print('Clean accuracy:', result[-1]['accuracy_test'], clean_accuracy)
         
-        # perturbed_result = train_and_evaluate(model, pert_attr, pert_adj, attr, adj, labels, split, device, writer, current_config, retrain=True, is_clean_model=False)
+        
         
         # print('========================================')
         # print('Perturbed accuracy:', result[-1]['accuracy_test'], perturbed_accuracy)
         
-    elif(current_config.attack.type == 'evasion'):
+    elif(current_config.attack.scope == 'local'):
         # * use the clean train model and check against pertubed test
         
-        pert_attr, pert_adj = initialize_attack(current_config, attr, adj, labels, split, model, device, num_edges)
+        perturbed_result = local_attack(current_config, attr, adj, labels, split, model, device, num_edges)
     #     clean_accuracy = train_and_evaluate(model, attr, adj, attr, adj, labels, split, device, writer, current_config.training)
     #     print('========================================')
     #     print('Clean accuracy:', clean_accuracy)
@@ -107,7 +129,7 @@ def run_experiment(experiment, experiment_dir, artifact_manager):
     #     print('Perturbed accuracy:', perturbed_accuracy)
     all_result = {
         'clean_result': clean_result,
-        'perturbed_result': pert_adj,
+        'perturbed_result': perturbed_result,
     }
     # log to tensorboard
     return all_result, current_config
@@ -123,11 +145,11 @@ def clean_train(current_config, artifact_manager, model, attr, adj, labels, spli
         # print('accuracy after model retrieved: ', evaluate_global(model, attr, adj, labels, split['test']), current_config.device)
         return result
     
-    result = train_and_evaluate(model, attr, adj, attr, adj, labels, split, device, writer, current_config, retrain=False, is_clean_model=True)
+    result = train_and_evaluate(model, attr, adj, attr, adj, labels, split, device, writer, current_config, retrain=False, is_unattacked_model=True)
     
     return result
     
-def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels, split, device, writer, current_config, retrain, is_clean_model):
+def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels, split, device, writer, current_config, retrain, is_unattacked_model):
     # Move data to the device (GPU or CPU)
     train_attr = train_attr.to(device)
     train_adj = train_adj.to(device)
@@ -157,21 +179,20 @@ def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels
         'Test accuracy after best model retrieval': accuracy
     })
 
-    artifact_manager.save_model(model, current_config, result, is_clean_model)
+    artifact_manager.save_model(model, current_config, result, is_unattacked_model)
     
     return result
 
-def initialize_attack(experiment, attr, adj, labels, split, model, device, num_edges, data_device = 0, make_undirected=True):
+def global_attack(experiment, attr, adj, labels, idx_attack, model, device, num_edges, data_device = 0, make_undirected=True):
     attack_model = create_attack(experiment.attack.name)(
-        attr=attr, adj=adj, labels=labels, idx_attack=split['train'],
+        attr=attr, adj=adj, labels=labels, idx_attack=idx_attack,
         model=model, device=device, data_device=data_device, 
-        # make_undirected=make_undirected, 
         **getattr(experiment.attack, 'params', {})
     )
-    if experiment.attack.scope == 'global':
-        n_perturbations = int(round(experiment.attack.epsilon * num_edges))
-        attack_model.attack(n_perturbations)
-        return attack_model.get_perturbations()
+    
+    n_perturbations = int(round(experiment.attack.epsilon * num_edges))
+    attack_model.attack(n_perturbations)
+    return attack_model.get_perturbations()
     # n_perturbations = int(round(experiment.attack.epsilon * num_edges))
     
     # if(experiment.attack.scope == 'local' and experiment.attack.type =='poison'):
@@ -188,40 +209,151 @@ def initialize_attack(experiment, attr, adj, labels, split, model, device, num_e
     # * if poison, train the model on the clean data, get the nodes if they are not given. Then I need to perturb the node and train on it
     # * idx_attack is just for global attack
     
-    if(experiment.attack.scope == 'local' and experiment.attack.type =='poison'):
-        results = []
-        eps = experiment.attack.epsilon
-        nodes = experiment.attack.nodes
-        if nodes is None:
-            epsilon_inverse = int(1 / eps)
+    # if(experiment.attack.scope == 'local' and experiment.attack.type =='poison'):
+    #     results = []
+    #     eps = experiment.attack.epsilon
+    #     nodes = experiment.attack.nodes
+    #     if nodes is None:
+    #         epsilon_inverse = int(1 / eps)
             
-            min_node_degree = max(2, epsilon_inverse) if experiment.attack.min_node_degree is None else experiment.attack.min_node_degree
+    #         min_node_degree = max(2, epsilon_inverse) if experiment.attack.min_node_degree is None else experiment.attack.min_node_degree
             
-            topk = int(experiment.attack.topk) if experiment.attack.topk is not None else 10
+    #         topk = int(experiment.attack.topk) if experiment.attack.topk is not None else 10
 
-            nodes = get_local_attack_nodes(attr, adj, labels, model, split['train'], device, topk=topk, min_node_degree=min_node_degree)
+    #         nodes = get_local_attack_nodes(attr, adj, labels, model, split['train'], device, topk=topk, min_node_degree=min_node_degree)
 
-        nodes = [int(i) for i in nodes]
-        for node in nodes:
-            degree = adj[node].sum()
-            n_perturbations = int((eps * degree).round().item())
-            if n_perturbations == 0:
-                print(
-                    f"Skipping attack for model '{model}' using {experiment.attack.name} with eps {eps} at node {node}.")
-                continue
-            try:
-                attack_model.attack(n_perturbations, node_idx=node)
-            except Exception as e:
-                logging.exception(e)
-                logging.error(
-                    f"Failed to attack model '{model}' using {experiment.attack.name} with eps {eps} at node {node}.")
-                continue
+    #     nodes = [int(i) for i in nodes]
+    #     for node in nodes:
+    #         degree = adj[node].sum()
+    #         n_perturbations = int((eps * degree).round().item())
+    #         if n_perturbations == 0:
+    #             print(
+    #                 f"Skipping attack for model '{model}' using {experiment.attack.name} with eps {eps} at node {node}.")
+    #             continue
+    #         try:
+    #             attack_model.attack(n_perturbations, node_idx=node)
+    #         except Exception as e:
+    #             logging.exception(e)
+    #             logging.error(
+    #                 f"Failed to attack model '{model}' using {experiment.attack.name} with eps {eps} at node {node}.")
+    #             continue
             
-            # odoo perturbed data deeree train hiiged result avna. Deer bolhor trained model deerees perturbed data avj bna
+    #         logits, initial_logits = attack_model.evaluate_local(node)
             
-            # if it is poison, give the attack trained model to get the perturbed adj, perturbed feature and train on it and see if it incorrectly classifies the node
+    #         results.append({
+    #             'node index': node,
+    #             'node degree': int(degree.item()),
+    #             'number of perturbations': n_perturbations,
+                
+    #             'target': labels[node].item(),                
+    #             'perturbed_edges': attack_model.get_perturbed_edges().cpu().numpy().tolist(),
+    #             'results before attacking (unperturbed data)': {
+    #                 'logits': initial_logits.cpu().numpy().tolist(),
+    #                 **classification_statistics(initial_logits.cpu(), labels[node].long().cpu())
+    #             },
+    #             'results after attacking (perturbed data)': {
+    #                 'logits': logits.cpu().numpy().tolist(),
+    #                 **classification_statistics(logits.cpu(), labels[node].long().cpu())
+    #             }
+    #         })
+            
+    #         # odoo perturbed data deeree train hiiged result avna. Deer bolhor trained model deerees perturbed data avj bna
+            
+    #         # if it is poison, give the attack trained model to get the perturbed adj, perturbed feature and train on it and see if it incorrectly classifies the node
+    #         if experiment.attack.type == 'poison':
+    #             perturbed_adj, perturbed_attr = attack_model.get_perturbations()
+                
+    #             victim = copy.deepcopy(model).to(device)
+    #             for module in victim.modules():
+    #                 if hasattr(module, 'reset_parameters'):
+    #                     module.reset_parameters()
+                
+    #             _ = train(model=victim, attr=perturbed_attr.to(device), adj=perturbed_adj.to(device), labels=labels.to(device), idx_train=split['train'], idx_val=split['valid'], idx_test=split['test'], **experiment.training, **experiment.optimizer.params)
+                
+    #             # hervee eniig attacked_model-oor solichihvol 
+    #             attack_model.set_eval_model(victim)
+    #             logits_poisoning, _ = attack_model.evaluate_local(node)
+    #             attack_model.set_eval_model(model)
+                
+    #             results.append({
+    #                 'attacked node': node,
+    #                 'logits': logits_poisoning.cpu().numpy().tolist(),
+    #                 **attack_model.classification_statistics(
+    #                     logits_poisoning, labels[node].long()),
+                    
+    #                 # 'node': node,
+    #                 # 'degree': degree.item(),
+    #                 # 'n_perturbations': n_perturbations,
+    #                 # 'initial_logits': initial_logits,
+    #                 # 'logits_poisoning': logits_poisoning,
+    #             })
+            
+    #         results.append({
+    #             'pyg_margin': attack_model._probability_margin_loss(victim(attr.to(device), adj.to(device)),labels, [node]).item()
+    #         })
+            
+    # results.append({
+    #     'all attacked nodes': nodes
+    # })
+    # print('results', results)
+    # return results, None
+
+def local_attack(experiment, attr, adj, labels, split, model, device, num_edges, data_device=0):
+    attack_model = create_attack(experiment.attack.name)(
+        attr=attr, adj=adj, labels=labels, 
+        idx_attack=split['test'],
+        model=model, device=device, data_device=data_device, 
+        **getattr(experiment.attack, 'params', {})
+    )
+    
+    results = []
+    eps = experiment.attack.epsilon
+    nodes = experiment.attack.nodes
+    if nodes is None:
+        epsilon_inverse = int(1 / eps)
+        
+        min_node_degree = max(2, epsilon_inverse) if experiment.attack.min_node_degree is None else experiment.attack.min_node_degree
+        
+        topk = int(experiment.attack.topk) if experiment.attack.topk is not None else 10
+
+        nodes = get_local_attack_nodes(attr, adj, labels, model, split['train'], device, topk=topk, min_node_degree=min_node_degree)
+
+    nodes = [int(i) for i in nodes]
+    for node in nodes:
+        degree = adj[node].sum()
+        n_perturbations = int((eps * degree).round().item())
+        if n_perturbations == 0:
+            print(
+                f"Skipping attack for model '{model}' using {experiment.attack.name} with eps {eps} at node {node}.")
+            continue
+        try:
+            attack_model.attack(n_perturbations, node_idx=node)
+        except Exception as e:
+            logging.exception(e)
+            logging.error(
+                f"Failed to attack model '{model}' using {experiment.attack.name} with eps {eps} at node {node}.")
+            continue
+        
+        logits, initial_logits = attack_model.evaluate_local(node)
+  
+        results.append({
+            'node index': node,
+            'node degree': int(degree.item()),
+            'number of perturbations': n_perturbations,
+            'target': labels[node].item(),                
+            'perturbed_edges': attack_model.get_perturbed_edges().cpu().numpy().tolist(),
+            'results before attacking (unperturbed data)': {
+                'logits': initial_logits.cpu().numpy().tolist(),
+                **classification_statistics(initial_logits.cpu(), labels[node].long().cpu())
+            },
+            'results after attacking (perturbed data)': {
+                'logits': logits.cpu().numpy().tolist(),
+                **classification_statistics(logits.cpu(), labels[node].long().cpu())
+            }
+        })
+        if(experiment.attack.type == 'poison'):
             perturbed_adj, perturbed_attr = attack_model.get_perturbations()
-            
+                
             victim = copy.deepcopy(model).to(device)
             for module in victim.modules():
                 if hasattr(module, 'reset_parameters'):
@@ -233,33 +365,34 @@ def initialize_attack(experiment, attr, adj, labels, split, model, device, num_e
             attack_model.set_eval_model(victim)
             logits_poisoning, _ = attack_model.evaluate_local(node)
             attack_model.set_eval_model(model)
-            
-            # logits, initial_logits = adversary.evaluate_local(node)
-            results.append({
-                'attacked node': node,
-                'logits': logits_poisoning.cpu().numpy().tolist(),
-                **attack_model.classification_statistics(
-                    logits_poisoning, labels[node].long()),
-                
-                # 'node': node,
-                # 'degree': degree.item(),
-                # 'n_perturbations': n_perturbations,
-                # 'initial_logits': initial_logits,
-                # 'logits_poisoning': logits_poisoning,
+            results[-1].update({
+                'results after attacking (perturbed data)':
+                {
+                    'logits': logits_poisoning.cpu().numpy().tolist(),
+                    **classification_statistics(logits_poisoning.cpu(), labels[node].long().cpu())
+                },
             })
+    assert len(results) > 0, "No attack could be made."
+    return results
             
-            results.append({
-                'pyg_margin': attack_model._probability_margin_loss(victim(attr.to(device), adj.to(device)),labels, [node]).item()
-            })
-            
-    results.append({
-        'all attacked nodes': nodes
-    })
-    print('results', results)
-    return results, None
 
-def local_attack():
-    pass
+def classification_statistics(logits: TensorType[1, "n_classes"],
+                                  label: TensorType[()]) -> Dict[str, float]:
+    logits, label = F.log_softmax(logits.cpu(), dim=-1), label.cpu()
+    logits = logits[0]
+    logit_target = logits[label].item()
+    sorted = logits.argsort()
+    logit_best_non_target = (logits[sorted[sorted != label][-1]]).item()
+    confidence_target = np.exp(logit_target)
+    confidence_non_target = np.exp(logit_best_non_target)
+    margin = confidence_target - confidence_non_target
+    return {
+        'logit_target': logit_target,
+        'logit_best_non_target': logit_best_non_target,
+        'confidence_target': confidence_target,
+        'confidence_non_target': confidence_non_target,
+        'margin': margin
+    }
 
 def get_local_attack_nodes(attr, adj, labels, model, idx_test, device, topk=10, min_node_degree=2):
     # if attack_type == 'poison':

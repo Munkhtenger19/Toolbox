@@ -2,6 +2,7 @@ from tinydb import TinyDB, Query
 from pathlib import Path
 import json, hashlib
 import torch
+import logging
 class Storage:
     def __init__(self, save_dir, experiment_name, model_name, dataset_name):
         self.save_dir = save_dir
@@ -41,23 +42,30 @@ class ArtifactManager:
     def save_model(self, model, params, result, is_unattacked_model):
         if is_unattacked_model:
             params = {key: value for key, value in params.items() if key != 'attack'}
+            model_suffix = f"{params['model']['name']}_{params['dataset']['name']}.pt"
+            result_file_name = "result.json"
+        else:
+            model_suffix = f"{params['attack']['name']}_{params['model']['name']}_{params['dataset']['name']}.pt"
+            result_file_name = "attacked_result.json"
+
         hash_id = self.hash_parameters(params)
         model_dir = self.cache_directory / f"{hash_id}"
-        if is_unattacked_model:
-            model_path = model_dir / f"{params['model']['name']}_{params['dataset']['name']}.pt"
-            result_path = model_dir / "result.json"
-        else:
-            model_path = model_dir / f"{params['attack']['name']}_{params['model']['name']}_{params['dataset']['name']}.pt"
-            result_path = model_dir / "attacked_result.json"
-            
+        model_path = model_dir / model_suffix
+        result_path = model_dir / result_file_name
         params_path = model_dir / "params.json"
+
         model_dir.mkdir(exist_ok=True)
-        torch.save(model.state_dict(), model_path)
-        with params_path.open('w') as file:
-            json.dump(params, file, indent=4)
-        with result_path.open('w') as file:
-            json.dump(result, file, indent=4)
-        print('SAVED MODEL')
+
+        try:
+            torch.save(model.state_dict(), model_path)
+            with params_path.open('w') as file:
+                json.dump(params, file, indent=4)
+            with result_path.open('w') as file:
+                json.dump(result, file, indent=4)
+        except Exception as e:
+            logging.error(f"Failed to save model or results: {e}")
+        else:
+            logging.info('SAVED MODEL')
 
     def model_exists(self, experiment_params):
         """ Check if a model with the given parameters already exists. """

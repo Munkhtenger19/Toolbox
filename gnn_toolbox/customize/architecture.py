@@ -6,29 +6,31 @@ from torch_geometric.nn.conv.gcn_conv import gcn_norm
 from customize.model import BaseModel
 from customize.register import register_architecture
 
+from typing import Any, Dict, Union
+
+
 @register_architecture("GCN")
-class GCN(BaseModel):
-    def __init__(self, in_channels: int, out_channels: int, hidden_channels: int, num_layers: int, dropout: float = 0.5):
+class GCN(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, hidden_channels: int, num_layers: int = 2, dropout: float = 0.5, **kwargs):
         super().__init__()
         self.GCNConv = GCNConv(in_channels=in_channels, out_channels=hidden_channels)
         self.layers = nn.ModuleList([GCNConv(hidden_channels, hidden_channels) for _ in range(num_layers)])
         self.dropout = nn.Dropout(dropout)
         self.linear = nn.Linear(hidden_channels, out_channels)
         
-    def forward(self, batch):
-        x, edge_index = batch.x, batch.edge_index
+    def forward(self, x, edge_index, **kwargs):
         x = self.GCNConv(x, edge_index)
         for layer in self.layers:
             x = F.relu(layer(x, edge_index))
             x = self.dropout(x)
-        return self.linear(x), batch.y
+        return self.linear(x)
     
-    def compute_loss(self, pred, true):
-        return F.binary_cross_entropy_with_logits(pred, true), torch.sigmoid(pred)
+    # def compute_loss(self, pred, true):
+    #     return F.binary_cross_entropy_with_logits(pred, true), torch.sigmoid(pred)
 
 
 @register_architecture('gcn2')
-class GCN(BaseModel):
+class GCN2(BaseModel):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2):
         super().__init__()
         self.norm = gcn_norm
@@ -59,8 +61,10 @@ class GCN(BaseModel):
         for idx, m in enumerate(self.modules()):
             print(idx, '->', m)
     
-model = GCN(16, 16, 16)
-print(model.hparams)
+# model = GCN(16, 16, 16)
+# print(model.hparams)
 
 # parameters = list(self.modules())
 # model._extract_model_info()
+
+MODEL_TYPE = Union[GCN, GCN2]

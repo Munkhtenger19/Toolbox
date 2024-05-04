@@ -45,7 +45,7 @@ def accuracy(
 
 
 # @typechecked
-class RobustnessBaseAttack(ABC):
+class BaseAttack(ABC):
     """
     Base class for adversarial attacks
 
@@ -92,8 +92,7 @@ class RobustnessBaseAttack(ABC):
         model: MODEL_TYPE,
         device: Union[str, int, torch.device],
         data_device: Union[str, int, torch.device],
-        make_undirected: bool,
-        #  binary_attr: bool,
+        make_undirected: bool = False,
         loss_type: str = "CE",  # 'CW', 'LeakyCW'  # 'CE', 'MCE', 'Margin'
         #  attack_structure=True,
         #  attack_features=False,
@@ -170,7 +169,7 @@ class RobustnessBaseAttack(ABC):
 
         if isinstance(self.adj_adversary, torch.Tensor):
             # * might need to do to_dense() here since torch_geometric uses torch tensor
-            adj_adversary = SparseTensor.from_dense(self.adj_adversary)
+            adj_adversary = SparseTensor.to_torch_sparse_coo_tensor(self.adj_adversary)
 
         if isinstance(self.attr_adversary, SparseTensor):
             attr_adversary = self.attr_adversary.to_dense()
@@ -190,12 +189,7 @@ class RobustnessBaseAttack(ABC):
         Evaluates any model w.r.t. accuracy for a given (perturbed) adjacency and attribute matrix.
         """
         model.eval()
-        if hasattr(model, "release_cache"):
-            model.release_cache()
-
-        # if type(model) in BATCHED_PPR_MODELS.__args__:
-        #     pred_logits_target = model.forward(attr, adj, ppr_idx=np.array(eval_idx))
-        # else:
+        
         pred_logits_target = model(attr, adj)[eval_idx]
 
         acc_test_target = accuracy(
@@ -307,48 +301,9 @@ class RobustnessBaseAttack(ABC):
             loss = F.cross_entropy(logits, labels)
         return loss
 
-    @staticmethod
-    def project(
-        n_perturbations: int,
-        values: torch.Tensor,
-        eps: float = 0,
-        inplace: bool = False,
-    ):
-        if not inplace:
-            values = values.clone()
-
-        if torch.clamp(values, 0, 1).sum() > n_perturbations:
-            left = (values - 1).min()
-            right = values.max()
-            miu = Attack.bisection(values, left, right, n_perturbations)
-            values.data.copy_(torch.clamp(values - miu, min=eps, max=1 - eps))
-        else:
-            values.data.copy_(torch.clamp(values, min=eps, max=1 - eps))
-        return values
-
-    @staticmethod
-    def bisection(edge_weights, a, b, n_perturbations, epsilon=1e-5, iter_max=1e5):
-        def func(x):
-            return torch.clamp(edge_weights - x, 0, 1).sum() - n_perturbations
-
-        miu = a
-        for i in range(int(iter_max)):
-            miu = (a + b) / 2
-            # Check if middle point is root
-            if func(miu) == 0.0:
-                break
-            # Decide the side to repeat the steps
-            if func(miu) * func(a) < 0:
-                b = miu
-            else:
-                a = miu
-            if (b - a) <= epsilon:
-                break
-        return miu
-
 
 # @typechecked
-class SparseAttack(RobustnessBaseAttack):
+class SparseAttack(BaseAttack):
     """
     Base class for all sparse attacks.
     Just like the base attack class but automatically casting the adjacency to sparse format.
@@ -357,6 +312,7 @@ class SparseAttack(RobustnessBaseAttack):
     def __init__(
         self,
         adj: Union[SparseTensor, TensorType["n_nodes", "n_nodes"], sp.csr_matrix],
+        make_undirected: bool = True,
         **kwargs,
     ):
 
@@ -365,7 +321,7 @@ class SparseAttack(RobustnessBaseAttack):
         elif isinstance(adj, sp.csr_matrix):
             adj = SparseTensor.from_scipy(adj)
 
-        super().__init__(adj, **kwargs)
+        super().__init__(adj, make_undirected = make_undirected, **kwargs)
 
         edge_index_rows, edge_index_cols, edge_weight = adj.coo()
         self.edge_index = torch.stack([edge_index_rows, edge_index_cols], dim=0).to(
@@ -530,7 +486,7 @@ class SparseLocalAttack(SparseAttack):
         return self.adj_adversary
 
 
-class DenseAttack(RobustnessBaseAttack):
+class DenseAttack(BaseAttack):
 
     @typechecked
     def __init__(
@@ -542,12 +498,13 @@ class DenseAttack(RobustnessBaseAttack):
         model,
         device: Union[str, int, torch.device],
         data_device: Union[str, int, torch.device],
+        make_undirected: bool = True,
         loss_type: str = "CE",
         **kwargs,
     ):
-        assert isinstance(
-            model, DenseGCN
-        ), "DenseAttacks can only attack the DenseGCN model"
+        # assert isinstance(
+        #     model, DenseGCN
+        # ), "DenseAttacks can only attack the DenseGCN model"
 
         if isinstance(adj, SparseTensor):
             adj = adj.to_dense()
@@ -561,6 +518,7 @@ class DenseAttack(RobustnessBaseAttack):
             device,
             data_device,
             loss_type=loss_type,
+            make_undirected=make_undirected,
             **kwargs,
         )
 
