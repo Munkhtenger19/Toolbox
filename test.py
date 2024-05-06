@@ -1,13 +1,19 @@
-from torch_geometric.datasets import KarateClub, Planetoid, TUDataset
+from torch_geometric.datasets import KarateClub, Planetoid, TUDataset, GNNBenchmarkDataset
 from torch_geometric.loader import DataLoader
+import torch_geometric.transforms as T
 import torch
 import os
 import scipy.sparse as sp
 import numpy as np
+from ogb.nodeproppred import PygNodePropPredDataset
 # from config_def import cfg
 dataset = KarateClub()
 mutag = TUDataset(root='./datasets', name='MUTAG')
 other_data = Planetoid(root='./datasets', name='cora')
+# benchmark = GNNBenchmarkDataset(root='./datasets', name='ogbn-arxiv')
+nodeproppred = PygNodePropPredDataset(name='ogbn-arxiv', root='./datasets')
+nodeproppred = nodeproppred[0]
+# print('nodeproppred', nodeproppred)
 data= other_data[0]
 data2 = other_data[0]
 n = data.num_nodes
@@ -16,9 +22,13 @@ adj_deep = sp.csr_matrix((data.edge_weight, data.edge_index), (data.num_nodes, d
 
 adj_rob = sp.csr_matrix((np.ones(data2.edge_index.shape[1]),
                                   (data2.edge_index[0], data2.edge_index[1])), shape=(n, n))
-
-print('adj_deep', adj_deep)
-print('adj_rob', adj_rob)
+transform = T.Compose([T.ToUndirected(), T.ToSparseTensor(layout=torch.sparse_csr)])
+data5= transform(nodeproppred)
+print('data5', data5)
+from torch_geometric.utils.sparse import is_sparse
+print('is_sparse', is_sparse(data5.adj_t))
+# print('adj_deep', adj_deep)
+# print('adj_rob', adj_rob)
 # print(dataset.num_classes)
 # print(torch.unique(dataset._data.y).shape[0])
 # # print(torch.unique(dataset._data.y).shape[1])
