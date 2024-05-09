@@ -32,7 +32,7 @@ def run_experiment(experiment, experiment_dir, artifact_manager):
     make_undirected = experiment['dataset'].get('make_undirected', False)
     dataset = create_dataset(**experiment['dataset'])
 
-    attr, adj, labels, split, num_edges = prepare_dataset(dataset, experiment, graph_index)
+    attr, adj, labels, split, num_edges = prepare_dataset(dataset, experiment, graph_index, make_undirected)
     
     model = create_model(experiment['model'])
     
@@ -117,28 +117,30 @@ def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels
     result.append({
         'Test accuracy after best model retrieval': accuracy
     })
-
+    # if is_unattacked_model:
+    #     artifact_manager.save_model(model, current_config, result)
+    # else:
     artifact_manager.save_model(model, current_config, result, is_unattacked_model)
     
     return result
 
-def global_attack(attack_info, attr, adj, labels, idx_attack, model, device, num_edges, make_undirected, data_device = 0):
+def global_attack(attack_info, attr, adj, labels, idx_attack, model, device, num_edges, make_undirected):
     attack_params = getattr(attack_info, 'params', {})
     attack_model = create_attack(attack_info['name'])(
         attr=attr, adj=adj, labels=labels, idx_attack=idx_attack,
-        model=model, device=device, data_device=data_device, make_undirected=make_undirected, **attack_params)
+        model=model, device=device, make_undirected=make_undirected, **attack_params)
     
     n_perturbations = int(round(attack_info['epsilon'] * num_edges))
     attack_model.attack(n_perturbations)
     return attack_model.get_perturbations()
     
 
-def local_attack(experiment, attr, adj, labels, split, model, device, make_undirected, data_device=0):
+def local_attack(experiment, attr, adj, labels, split, model, device, make_undirected):
     attack_params = getattr(experiment['attack'], 'params', {})
     attack_model = create_attack(experiment['attack']['name'])(
         attr=attr, adj=adj, labels=labels, 
         idx_attack=split['test'],
-        model=model, device=device, data_device=data_device, make_undirected=make_undirected, **attack_params)
+        model=model, device=device, make_undirected=make_undirected, **attack_params)
     
     results = []
     eps = experiment['attack']['epsilon']

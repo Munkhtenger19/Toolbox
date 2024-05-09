@@ -10,6 +10,7 @@ class LogExperiment:
         self.experiment_config = experiment_cfg
         self.result = result
         self.log_to = Path(experiment_dir)
+        self.csv_save = experiment_cfg.get('csv_save', True)
         self.log_experiment_config()
         self.log_results()
         
@@ -33,23 +34,3 @@ class LogExperiment:
         except Exception as e:
             logging.error(f"Failed to log results: {e}")
             
-
-def setup_logging(experiment):
-    """ Set up the logging environment. """
-    log_dir = f"./logs/{experiment_id}"
-    os.makedirs(log_dir, exist_ok=True)
-    logging.basicConfig(filename=f"{log_dir}/experiment.log",
-                        level=logging.INFO,
-                        format='%(asctime)s %(levelname)s:%(message)s')
-    return log_dir
-
-def log_experiment_results(experiment_config):
-    output_dir = Path(experiment_config['name'])
-    output_dir.mkdir(parents=True, exist_ok=True)
-    filename = output_dir / f"{experiment_config['name']}_results.json"
-    
-    with open(filename, 'w') as f:
-        json.dump(experiment_config, f, indent=4)
-        f.write("\n")
-        # Additionally write out other results like accuracy
-        f.write(json.dumps({'accuracy': accuracy}))

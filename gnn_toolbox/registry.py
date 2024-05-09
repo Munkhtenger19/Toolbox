@@ -1,19 +1,17 @@
 from typing import Any, Callable, Dict, Union
 from functools import partial
-from gnn_toolbox.custom_modules.utils import DotDict
 from gnn_toolbox.custom_modules import *
 ModuleType = Any
 
 registry: Dict[str, Dict[str, ModuleType]] = {
     "architecture": {},
-    "attack":{},
+    "global_attack":{},
+    "local_attack":{},
     "dataset": {},
     "transform": {},
     "optimizer": {},
     "loss": {},
 }
-
-# registry = DotDict(registry)
 
 def register_module(category: str, key: str, module: ModuleType = None) -> Union[Callable, None]:
     """
@@ -54,11 +52,9 @@ def get_from_registry(category: str, key: str, registry: Dict[str, Dict[str, Mod
             raise KeyError(f"Module '{key}' not found in category '{category}'. Available options: {list(category_registry.keys())}")
 
 register_architecture = partial(register_module, "architecture")
-register_attack = partial(register_module, "attack")
+register_global_attack = partial(register_module, "global_attack")
+register_local_attack = partial(register_module, "local_attack")
 register_dataset = partial(register_module, "dataset")
 register_transform = partial(register_module, "transform")
 register_optimizer = partial(register_module, "optimizer")
 register_loss = partial(register_module, "loss")
-
-print('from registry')
-print((key, value) for key, value in registry)

@@ -36,8 +36,12 @@ def create_model(model):
     model = architecture(**model['params'])
     return model
 
-def create_attack(attack_name):
-    attack = get_from_registry("attack", attack_name, registry)
+def create_global_attack(attack_name):
+    attack = get_from_registry("global_attack", attack_name, registry)
+    return attack
+
+def create_local_attack(attack_name):
+    attack = get_from_registry("local_attack", attack_name, registry)
     return attack
 
 def create_optimizer(optimizer_name, model, **kwargs):

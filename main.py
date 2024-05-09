@@ -10,10 +10,10 @@ def main(file):
     # * here add pydantic checker for yaml
     # yaml = pydantic_checker(args.cfg_file)
     
-    experiments, experiment_dirs, output_dir = generate_experiments_from_yaml(file)
+    experiments = generate_experiments_from_yaml(file)
     artifact_manager = ArtifactManager('cache')
     try:
-        for experiment, curr_dir in zip(experiments, experiment_dirs):  
+        for curr_dir, experiment in experiments.items():  
             result, experiment_cfg = run_experiment(experiment, curr_dir, artifact_manager)
             LogExperiment(curr_dir, experiment_cfg, result)
     except Exception as e:

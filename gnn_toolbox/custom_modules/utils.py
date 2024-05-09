@@ -1,6 +1,6 @@
 import torch
 import scipy.sparse as sp
-from torch_sparse import SparseTensor
+from torch_sparse import SparseTensor, coalesce
 from typing import Tuple, Union, Sequence
 
 
@@ -88,7 +88,6 @@ def bisection(edge_weights, a, b, n_perturbations, epsilon=1e-5, iter_max=1e5):
 
 def sparse_tensor(spmat: sp.spmatrix, grad: bool = False):
     """
-
     Convert a scipy.sparse matrix to a SparseTensor.
     Parameters
     ----------

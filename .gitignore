@@ -1,6 +1,7 @@
+# artifacts and logs
 **/__pycache__
 **/lightning_logs
-/runs
+**/runs
 **/mlruns
 **/mlartifacts
 **datasets
@@ -16,6 +17,7 @@
 *.ally
 *.graph
 *.txt
+!requirements.txt
 *.csv
 *.npz
 *.pkl

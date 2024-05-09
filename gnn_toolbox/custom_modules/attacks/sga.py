@@ -48,7 +48,6 @@ class SGA(SparseLocalAttack):
         self,
         direct: bool = True,
         n_influencers: int = 3,
-        loss_type: str = "Margin",
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -195,7 +194,6 @@ class SGA(SparseLocalAttack):
         with torch.no_grad():
             # To save memory
             device = self.device
-            self.device = self.data_device
             self.attacked_model = self.attacked_model.to(self.device)
             logits = self.get_surrogate_logits(node_idx)
             classification_statistics = SGA.classification_statistics(
@@ -403,10 +401,10 @@ class SGA(SparseLocalAttack):
             added_edges_idx.shape[1], dtype=torch.float32, device=self.device
         )
 
-        deleted_edges_idx = deleted_edges_idx.to(self.data_device)
-        added_edges_idx = added_edges_idx.to(self.data_device)
-        deleted_edges_weights = deleted_edges_weights.to(self.data_device)
-        added_edges_weights = added_edges_weights.to(self.data_device)
+        deleted_edges_idx = deleted_edges_idx.to(self.device)
+        added_edges_idx = added_edges_idx.to(self.device)
+        deleted_edges_weights = deleted_edges_weights.to(self.device)
+        added_edges_weights = added_edges_weights.to(self.device)
 
         A_idx = torch.cat([self.edge_index, deleted_edges_idx, added_edges_idx], dim=-1)
         A_weights = torch.cat(

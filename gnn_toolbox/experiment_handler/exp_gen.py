@@ -1,10 +1,12 @@
 import os
 import yaml
-from itertools import product
-
 from pathlib import Path
+from itertools import product
+import shutil
 
-SPECIAL_KEYS =['attack.nodes', 'dataset.transforms']
+
+
+KEEP_AS_LIST =['attack.nodes', 'dataset.transforms']
 CONFIG_VALUES = ['output_dir', 
                  'experiment_templates',
                  ]
@@ -30,21 +32,6 @@ class ConfigError(InputError):
 
     def __init__(self, message="The config file contains an error."):
         super().__init__(f"CONFIG ERROR: {message}")
-
-def file_handler(file):
-    with open(file, "r") as f:
-        experiments_config = yaml.safe_load(f)
-    
-    for k in experiments_config.keys():
-        if k not in CONFIG_VALUES:
-            raise ConfigError(f"{k} is not a valid value in the `seml` config block.") 
-    
-    output_dir = experiments_config['output_dir']
-    del experiments_config['output_dir']
-    # experiments_template = experiments_config['experiments_template']
-    
-    # ! might be bad
-    return output_dir, experiments_config['experiment_templates']
     
 def flatten(dictionary: dict, parent_key: str = '', sep: str = '.'):
     """
@@ -72,61 +59,78 @@ def flatten(dictionary: dict, parent_key: str = '', sep: str = '.'):
             items.append((new_key, value))
     return dict(items)
 
+def _generate_combinations(config_dict):
+    # formatted_dict = { key:value[0] for key, value in config_dict.items() if isinstance(value, list) and len(value) == 1}
+    parameter_dict = { key:value for key, value in config_dict.items() if isinstance(value, list) and key not in KEEP_AS_LIST}
+    for combination in product(*(parameter_dict.values())):
+        yield dict(zip(parameter_dict.keys(), combination))
 
-def generate_experiments_from_yaml(yaml_file):
-    with open(yaml_file, "r") as f:
+def folder_exists(folder_path):
+    folder = Path(folder_path)
+    return folder.exists() and folder.is_dir()  
+
+def generate_experiments_from_yaml(file):
+    with open(file, "r") as f:
         experiments_config = yaml.safe_load(f)
-
-    def _generate_combinations(config_dict):
-        parameter_dict = { key:value for key, value in config_dict.items() if isinstance(value, list) and key not in SPECIAL_KEYS}
-        for combination in product(*(parameter_dict.values())):
-            yield dict(zip(parameter_dict.keys(), combination))
-
+    
     output_dir = Path(experiments_config["output_dir"])
+    resume_output = experiments_config.get("resume_output", False)
+    
+    if (not resume_output) and folder_exists(output_dir):
+        shutil.rmtree(output_dir)
+        
     output_dir.mkdir(exist_ok=True)
     
-    all_experiments = []
-    experiment_dirs = []
+    first_depth_exp_gen=[]
     for experiment_template in experiments_config["experiment_templates"]:
         experiment_template = flatten(experiment_template)
         combinations = list(_generate_combinations(experiment_template))
         experiments = [experiment_template.copy() for _ in range(len(combinations))]
-        for id, (experiment, combination) in enumerate(zip(experiments, combinations)):
+        
+        for experiment, combination in zip(experiments, combinations):
             for key, value in combination.items():
                 experiment[key] = value
             experiment = unflatten(experiment)
-            experiment_dir = setup_directories(experiments_config['output_dir'], experiment['name'], id)
-            all_experiments.append(experiment)
-            experiment_dirs.append(experiment_dir)
+            first_depth_exp_gen.append(experiment)
+            
+    all_experiments={}
+    # test2 = []
+    # exp_test = []
+    id=1
+    for experiment in first_depth_exp_gen:
+        experiment_template = flatten(experiment)
+        combinations = list(_generate_combinations(experiment_template))
+        experiments = [experiment_template.copy() for _ in range(len(combinations))]
+        
+        for experiment, combination in zip(experiments, combinations):
+            print('id', id)
+            for key, value in combination.items():
+                experiment[key] = value
+            experiment = unflatten(experiment)
+            experiment_dir = setup_directories(experiments_config['output_dir'], experiment['name'], id, resume_output)
+            # test2.append(experiment)
+            # exp_test.append(experiment_dir)
+            all_experiments[experiment_dir] = experiment
+            id+=1
+            
+    # print('all', test2)
+    # print('exp', exp_test)
+    print('all', all_experiments)
+    return all_experiments
 
-    return all_experiments, experiment_dirs, output_dir
-
-
-
-# def prepare_output_dir(base_dir, experiment):
-#     base_path = Path(base_dir) / experiment
-#     base_path.mkdir(parents=True, exist_ok=True)
-#     return base_path
-
-def setup_directories(base_dir, experiment_name, id):
-    print('I got called')
+def setup_directories(base_dir, experiment_name, id, resume_output):
     base_dir = Path(base_dir)
     
-    # existing_dirs = [d for d in base_dir.glob(experiment_name + '*') if d.is_dir()]
-    # id = 0
-    # if existing_dirs:
-    #     # Extract suffixes and find the maximum number
-    #     id = max([int(Path(existing_dir).name.split('_')[-1]) for existing_dir in existing_dirs]) + 1
+    if resume_output:
+        existing_dirs = [d for d in base_dir.glob(experiment_name + '*') if d.is_dir()]
+        if existing_dirs:
+            id = max([int(Path(existing_dir).name.split('_')[-1]) for existing_dir in existing_dirs]) + 1
     
-    # Create a new directory with the next suffix
-    new_experiment_dir = base_dir / f"{experiment_name}_{id+1}"
+    new_experiment_dir = base_dir / f"{experiment_name}_{id}"
     new_experiment_dir.mkdir(parents=True, exist_ok=True)
     
     return new_experiment_dir
-
-def make_experiment_dir(experiment):
-    pass    
-
+   
 def unflatten(dictionary):
     """
     Unflatten a dictionary
@@ -146,12 +150,11 @@ def unflatten(dictionary):
 def tensorboard_logger():
     pass
 
-# dir_path = os.path.dirname(os.path.realpath(__file__))
+dir_path = os.path.dirname(os.path.realpath(__file__))
 # # # Join the directory path and your file name
-# file_path = os.path.join(dir_path, 'good_1.yaml')
-# b = generate_experiments_from_yaml(file_path)
-# print(len(b))
-# i = b[0][0]
+file_path = os.path.join(dir_path, 'good_1.yaml')
+b = generate_experiments_from_yaml(file_path)
+print(len(b))
 # print(i)
 def foo(lr):
     print(lr)
@@ -183,6 +186,9 @@ def foo(lr):
 # i.model.params.in_channels= 2
 # print(type(i['training']['lr']))
 # print(i.model.params)
+
+
+
 
 d = {
     'model': {

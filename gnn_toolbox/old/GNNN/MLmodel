@@ -1,0 +1,26 @@
+artifact_path: GNNN
+flavors:
+  python_function:
+    config:
+      device: null
+    data: data
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.pytorch
+    pickle_module_name: mlflow.pytorch.pickle_module
+    python_version: 3.10.13
+  pytorch:
+    code: null
+    model_data: data
+    pytorch_version: 2.2.1+cu118
+mlflow_version: 2.12.1
+model_size_bytes: 107356
+model_uuid: 2d09c33d7e3146ee8380012dcf87abf5
+run_id: fc8352cdbc884b7e9aa199ee46db2c22
+signature:
+  inputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float32", "shape": [-1, 1433]}}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float32", "shape": [-1,
+    7]}}]'
+  params: null
+utc_time_created: '2024-04-29 22:08:55.109275'

@@ -1,0 +1,4 @@
+model:
+  name: GCN
+  params:
+    hidden_channels: 32

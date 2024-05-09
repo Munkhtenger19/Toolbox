@@ -6,9 +6,9 @@ def parse_args() -> argparse.Namespace:
     """Parses the command line arguments."""
     parser = argparse.ArgumentParser(description='Run experiments from a configuration file.')
 
-    parser.add_argument('--cfg', type=str, default= os.path.join('configs', 'good_1.yaml'), help='The configuration YAML file path. Default is good_1.yaml.')
+    parser.add_argument('--cfg', type=str, default= os.path.join('configs', 'default_experiment.yaml'), help='The configuration YAML file path. Default is configs/good_1.yaml.')
     
-    parser.add_argument('--log', type=str, default='DEBUG', help='Logging level. Choose from DEBUG, INFO, WARNING, ERROR, CRITICAL.')
+    parser.add_argument('--log', type=str, default='INFO', help='Logging level. Choose from DEBUG, INFO, WARNING, ERROR, CRITICAL.')
     
     return parser.parse_args()
 
@@ -25,7 +25,7 @@ def logger_setup(logging_level):
     }
     
     logger = logging.getLogger()
-    logging_level = levels.get(logging_level.upper(), logging.DEBUG)
+    logging_level = levels.get(logging_level.upper(), logging.INFO)
     logger.setLevel(logging_level)
 
     ch = logging.StreamHandler()

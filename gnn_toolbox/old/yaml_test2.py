@@ -87,7 +87,7 @@ def handler(file):
     output_dir = experiments_config['output_dir']
     for key, values in dict1.items():
         if isinstance(values, list):
-            
+            pass
 
 def generate_experiments_from_yaml(yaml_file):
     with open(yaml_file, "r") as f:

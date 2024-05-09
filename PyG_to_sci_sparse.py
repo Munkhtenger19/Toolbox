@@ -251,10 +251,12 @@ from torch_geometric.nn import GCN
 from torch_geometric.datasets import Amazon
 from torch_geometric.datasets import QM9, CoraFull
 import inspect
-coraa = CoraFull(root='./datasets')
+from gnn_toolbox.common import is_directed
+coraa = CoraFull(root='./datasets', transform=T.ToSparseTensor())
 
 d = coraa[0]
 print('coraa', d)
+print('is_directed', is_directed(d.adj_t))
 # init = inspect.signature(Planetoid )
 # if 'name' in init.parameters.keys():
 #     print('yesbitch')

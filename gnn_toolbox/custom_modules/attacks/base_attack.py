@@ -1,3 +1,14 @@
+"""
+Code in this file is modified from: https://github.com/sigeisler/robustness_of_gnns_at_scale/tree/main/rgnn_at_scale
+
+@inproceedings{geisler2021_robustness_of_gnns_at_scale,
+    title = {Robustness of Graph Neural Networks at Scale},
+    author = {Geisler, Simon and Schmidt, Tobias and \c{S}irin, Hakan and Z\"ugner, Daniel and Bojchevski, Aleksandar and G\"unnemann, Stephan},
+    booktitle={Neural Information Processing Systems, {NeurIPS}},
+    year = {2021},
+}
+"""
+
 import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
@@ -40,9 +51,6 @@ class BaseAttack(ABC):
         Model to be attacked.
     device : Union[str, int, torch.device]
         The cuda device to use for the attack
-    data_device : Union[str, int, torch.device]
-        The cuda device to use for storing the dataset.
-        Other models require the dataset and model to be on the same device.
     make_undirected: bool
         Wether the perturbed adjacency matrix should be made undirected (symmetric degree normalization)
     binary_attr: bool
@@ -61,16 +69,14 @@ class BaseAttack(ABC):
         # : MODEL_TYPE
         ,
         device: Union[str, int, torch.device],
-        data_device: Union[str, int, torch.device],
         make_undirected: bool = False,
-        loss_func: str = "CE",  # 'CW', 'LeakyCW'  # 'CE', 'MCE', 'Margin'
+        loss_type: str = "CE",
         **kwargs,
     ):
 
         self.device = device
-        self.data_device = data_device
         self.idx_attack = idx_attack
-        self.loss_func = loss_func
+        self.loss_type = loss_type
 
         self.make_undirected = make_undirected
 
@@ -81,8 +87,8 @@ class BaseAttack(ABC):
         self.eval_model = self.attacked_model
         self.labels = labels.to(torch.long).to(self.device)
         self.labels_attack = self.labels[self.idx_attack]
-        self.attr = attr.to(self.data_device)
-        self.adj = adj.to(self.data_device)
+        self.attr = attr.to(self.device)
+        self.adj = adj.to(self.device)
 
         self.attr_adversary = self.attr
         self.adj_adversary = self.adj
@@ -112,8 +118,8 @@ class BaseAttack(ABC):
         adj_perturbed: Union[SparseTensor, TensorType["n_nodes", "n_nodes"]],
         attr_perturbed: TensorType["n_nodes", "n_features"],
     ):
-        self.adj_adversary = adj_perturbed.to(self.data_device)
-        self.attr_adversary = attr_perturbed.to(self.data_device)
+        self.adj_adversary = adj_perturbed.to(self.device)
+        self.attr_adversary = attr_perturbed.to(self.device)
 
     def get_perturbations(self):
         adj_adversary, attr_adversary = self.adj_adversary, self.attr_adversary
@@ -128,7 +134,7 @@ class BaseAttack(ABC):
         return adj_adversary, attr_adversary
 
     def calculate_loss(self, logits, labels):
-        loss = get_from_registry("losses", self.loss_func, registry)
+        loss = get_from_registry("losses", self.loss_type, registry)
         return loss(logits, labels)
 
 
@@ -155,9 +161,9 @@ class SparseAttack(BaseAttack):
 
         edge_index_rows, edge_index_cols, edge_weight = adj.coo()
         self.edge_index = torch.stack([edge_index_rows, edge_index_cols], dim=0).to(
-            self.data_device
+            self.device
         )
-        self.edge_weight = edge_weight.to(self.data_device)
+        self.edge_weight = edge_weight.to(self.device)
         self.n = adj.size(0)
         self.d = self.attr.shape[1]
 
@@ -312,7 +318,6 @@ class DenseAttack(BaseAttack):
         idx_attack: np.ndarray,
         model,
         device: Union[str, int, torch.device],
-        data_device: Union[str, int, torch.device],
         make_undirected: bool = True,
         loss_type: str = "CE",
         **kwargs,
@@ -331,8 +336,7 @@ class DenseAttack(BaseAttack):
             idx_attack,
             model,
             device,
-            data_device,
-            loss_func=loss_type,
+            loss_type=loss_type,
             make_undirected=make_undirected,
             **kwargs,
         )

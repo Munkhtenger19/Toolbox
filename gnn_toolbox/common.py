@@ -20,6 +20,7 @@ from torchtyping import TensorType
 from torch_sparse import SparseTensor
 
 
+
 def train(model, attr, adj, labels, idx_train, idx_val, idx_test, optimizer, loss, max_epochs, patience):
     """Train a model using either standard training.
     Parameters
@@ -261,6 +262,7 @@ def split(labels, n_per_class=20, seed=None):
 def prepare_dataset(dataset,
                experiment: Dict[str, Any],
                graph_index: int,
+               make_undirected: bool,
                ) -> Tuple[TensorType["num_nodes", "num_features"],
                         SparseTensor,
                         TensorType["num_nodes"],
@@ -287,7 +289,7 @@ def prepare_dataset(dataset,
     """
     
     logging.debug("Memory Usage before loading the dataset:")
-    # logging.debug(utils.get_max_memory_bytes() / (1024 ** 3))
+    logging.debug(torch.cuda.memory_allocated(device=None) / (1024**3))
 
     if graph_index is None:
         graph_index = 0
@@ -318,10 +320,16 @@ def prepare_dataset(dataset,
     # make unweighted
     adj.data = np.ones_like(adj.data)
 
-    num_edges = adj.nnz  
-
     adj = SparseTensor.from_scipy(adj).coalesce().to(device)
 
+    if make_undirected:
+        adj = to_symmetric_scipy(adj)
+        num_edges = adj.nnz / 2
+        logging.debug("Memory Usage after making the graph undirected:")
+        logging.debug(torch.cuda.memory_allocated(device=None) / (1024**3))
+    else:
+        num_edges = adj.nnz
+        
     attr_matrix = data.x.cpu().numpy()
     print(adj)
     attr = torch.from_numpy(attr_matrix).to(device)
@@ -340,6 +348,18 @@ def prepare_dataset(dataset,
     return attr, adj, labels, split, num_edges
 
 def splitter(dataset, data, labels, seed):
+    """
+    Splits the dataset into train, validation, and test sets.
+
+    Args:
+        dataset: The dataset object.
+        data: The data object containing train, validation, and test masks.
+        labels: The labels for the dataset.
+        seed: The seed value for randomization.
+
+    Returns:
+        A dictionary containing the indices of the train, validation, and test sets.
+    """
     if hasattr(dataset, 'get_idx_split'):
         split = dataset.get_idx_split()
     else:
@@ -351,7 +371,7 @@ def splitter(dataset, data, labels, seed):
             )
             return split
         except AttributeError:
-            return split(labels=labels.cpu().numpy(), seed = seed)
+            return split(labels=labels.cpu().numpy(), seed=seed)
         
 
 def to_symmetric_scipy(adjacency: sp.csr_matrix):
@@ -360,3 +380,8 @@ def to_symmetric_scipy(adjacency: sp.csr_matrix):
     sym_adjacency.tocsr().sort_indices()
 
     return sym_adjacency
+
+def is_directed(adj_matrix) -> bool:
+    """Check if the graph is directed (adjacency matrix is not symmetric).
+    """
+    return (adj_matrix != adj_matrix.t()).sum() != 0
