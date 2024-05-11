@@ -26,13 +26,9 @@ from torch_sparse import SparseTensor
 
 from gnn_toolbox.registry import registry, get_from_registry
 
-# from custom_modules.architecture import MODEL_TYPE
-
-# from .real_base import BaseAttack
 # patch_typeguard()
 
-
-# @typechecked
+@typechecked
 class BaseAttack(ABC):
     """
     Base class for adversarial attacks
@@ -61,13 +57,11 @@ class BaseAttack(ABC):
 
     def __init__(
         self,
-        adj: Union[SparseTensor, TensorType["n_nodes", "n_nodes"]],
-        attr: TensorType["n_nodes", "n_features"],
-        labels: TensorType["n_nodes"],
+        adj: Union[SparseTensor, TensorType],
+        attr: TensorType,
+        labels: TensorType,
         idx_attack: np.ndarray,
-        model
-        # : MODEL_TYPE
-        ,
+        model,
         device: Union[str, int, torch.device],
         make_undirected: bool = False,
         loss_type: str = "CE",
@@ -115,8 +109,8 @@ class BaseAttack(ABC):
 
     def set_pertubations(
         self,
-        adj_perturbed: Union[SparseTensor, TensorType["n_nodes", "n_nodes"]],
-        attr_perturbed: TensorType["n_nodes", "n_features"],
+        adj_perturbed: Union[SparseTensor, TensorType],
+        attr_perturbed: TensorType,
     ):
         self.adj_adversary = adj_perturbed.to(self.device)
         self.attr_adversary = attr_perturbed.to(self.device)
@@ -138,7 +132,7 @@ class BaseAttack(ABC):
         return loss(logits, labels)
 
 
-# @typechecked
+@typechecked
 class SparseAttack(BaseAttack):
     """
     Base class for all sparse attacks.
@@ -147,7 +141,7 @@ class SparseAttack(BaseAttack):
 
     def __init__(
         self,
-        adj: Union[SparseTensor, TensorType["n_nodes", "n_nodes"], sp.csr_matrix],
+        adj: Union[SparseTensor, TensorType, sp.csr_matrix],
         make_undirected: bool = True,
         **kwargs,
     ):
@@ -168,7 +162,7 @@ class SparseAttack(BaseAttack):
         self.d = self.attr.shape[1]
 
 
-# @typechecked
+@typechecked
 class SparseLocalAttack(SparseAttack):
     """
     Base class for all local sparse attacks
@@ -184,9 +178,7 @@ class SparseLocalAttack(SparseAttack):
 
     def get_logits(
         self,
-        model
-        # : MODEL_TYPE
-        ,
+        model,
         node_idx: int,
         perturbed_graph: SparseTensor = None,
     ):
@@ -308,13 +300,12 @@ class SparseLocalAttack(SparseAttack):
 
 
 class DenseAttack(BaseAttack):
-
     @typechecked
     def __init__(
         self,
-        adj: Union[SparseTensor, TensorType["n_nodes", "n_nodes"]],
-        attr: TensorType["n_nodes", "n_features"],
-        labels: TensorType["n_nodes"],
+        adj: Union[SparseTensor, TensorType],
+        attr: TensorType,
+        labels: TensorType,
         idx_attack: np.ndarray,
         model,
         device: Union[str, int, torch.device],
@@ -322,10 +313,6 @@ class DenseAttack(BaseAttack):
         loss_type: str = "CE",
         **kwargs,
     ):
-        # assert isinstance(
-        #     model, DenseGCN
-        # ), "DenseAttacks can only attack the DenseGCN model"
-
         if isinstance(adj, SparseTensor):
             adj = adj.to_dense()
 

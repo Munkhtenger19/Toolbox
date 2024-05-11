@@ -218,7 +218,7 @@ def accuracy(logits: torch.Tensor, labels: torch.Tensor, split_idx: np.ndarray) 
     """
     return (logits.argmax(1)[split_idx] == labels[split_idx]).float().mean().item()
 
-def split(labels, n_per_class=20, seed=None):
+def random_splitter(labels, n_per_class=20, seed=None):
     """
     Randomly split the training data.
 
@@ -305,11 +305,13 @@ def prepare_dataset(dataset,
     # Also we need numpy arrays because Numba cant determine type of torch.Tensor
     
     device = experiment['device']
-    edge_index = data.edge_index.cpu()
-    if data.edge_attr is None:
-        edge_weight = torch.ones(edge_index.size(1))
-    else:
+    edge_index = data.edge_index
+    if data.edge_attr:
         edge_weight = data.edge_attr
+    elif data.edge_weight:
+        edge_weight = data.edge_weight
+    else:
+        edge_weight = torch.ones(edge_index.size(1))
     edge_weight = edge_weight.cpu()
 
     adj = sp.csr_matrix((edge_weight, edge_index), (num_nodes, num_nodes))
@@ -320,18 +322,18 @@ def prepare_dataset(dataset,
     # make unweighted
     adj.data = np.ones_like(adj.data)
 
-    adj = SparseTensor.from_scipy(adj).coalesce().to(device)
-
     if make_undirected:
-        adj = to_symmetric_scipy(adj)
+        adj = to_symmetric_scipy(adj)        
         num_edges = adj.nnz / 2
         logging.debug("Memory Usage after making the graph undirected:")
         logging.debug(torch.cuda.memory_allocated(device=None) / (1024**3))
     else:
         num_edges = adj.nnz
         
+    adj = SparseTensor.from_scipy(adj).coalesce().to(device)
+    
     attr_matrix = data.x.cpu().numpy()
-    print(adj)
+
     attr = torch.from_numpy(attr_matrix).to(device)
 
     labels = data.y.squeeze().to(device)
@@ -344,7 +346,6 @@ def prepare_dataset(dataset,
         'out_channels': int(labels[~labels.isnan()].max() + 1)
     })
     
-
     return attr, adj, labels, split, num_edges
 
 def splitter(dataset, data, labels, seed):
@@ -362,6 +363,7 @@ def splitter(dataset, data, labels, seed):
     """
     if hasattr(dataset, 'get_idx_split'):
         split = dataset.get_idx_split()
+        logging.info(f"Using the provided split from get_idx_split().")
     else:
         try:
             split = dict(
@@ -369,10 +371,11 @@ def splitter(dataset, data, labels, seed):
                 valid=data.val_mask.nonzero().squeeze(),
                 test=data.test_mask.nonzero().squeeze()
             )
+            logging.info(f"Using the provided split with train, val, test mask.")
             return split
         except AttributeError:
-            return split(labels=labels.cpu().numpy(), seed=seed)
-        
+            logging.info(f"Dataset doesn't provide train, val, test splits. Using random_splitter() for the splitting.")
+            return random_splitter(labels=labels.cpu().numpy(), seed=seed)
 
 def to_symmetric_scipy(adjacency: sp.csr_matrix):
     sym_adjacency = (adjacency + adjacency.T).astype(bool).astype(float)

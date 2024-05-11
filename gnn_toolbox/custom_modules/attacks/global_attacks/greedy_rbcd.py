@@ -4,10 +4,10 @@ import torch_sparse
 from torch_sparse import SparseTensor
 
 from gnn_toolbox.custom_modules import utils
-from gnn_toolbox.custom_modules.attacks.prbcd import PRBCD
-from gnn_toolbox.registry import register_attack
+from gnn_toolbox.custom_modules.attacks.global_attacks.prbcd import PRBCD
+from gnn_toolbox.registry import register_global_attack
 
-@register_attack("greedyRBCD")
+@register_global_attack("GreedyRBCD")
 class GreedyRBCD(PRBCD):
     """Sampled and hence scalable PGD attack for graph data.
     """

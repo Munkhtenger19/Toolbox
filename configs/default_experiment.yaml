@@ -1,33 +1,51 @@
 output_dir: ./output2  
-resume_output: False
-csv_save: True
+# resume_output: False
+# csv_save: True
 experiment_templates:
   - name: My experiment
-    seed: [0, 1, 2]
+    seed: [0]
     device: cuda
     model:
       - name: GCN
         params:
           hidden_channels: 32
-      - name: GAT
-        params:
-          hidden_channels: 64
     dataset:
       name: Cora
       root: ./datasets
-      make_undirected: False
+      make_undirected: True
       transforms:
         - name: NormalizeFeatures
-        - name: Constant
-          params:
-            value: 0.8
+        # - name: Constant
+        #   params:
+        #     value: 0.8
 
     attack:
-      scope: local
-      name: localDICE
-      type: poison
-      epsilon: [0,1, 0,2, 0.3]
-      nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+      # - scope: global
+      #   name: DICE
+      #   type: poison
+      #   epsilon: [0.5]
+      # - scope: global
+      #   name: FGSM
+      #   type: poison
+      #   epsilon: [0.5]
+      # - scope: global
+      #   name: PGD
+      #   type: poison
+      #   epsilon: [0.5]
+      # - scope: global
+      #   name: DICE, FGSM, PGD, PRBCD, GreedyRBCD]
+      #   type: [poison, evasion]
+      #   epsilon: [0.5]
+      - scope: global
+        name: [PRBCD, GreedyRBCD]
+        type: poison
+        epsilon: [0.5]
+      # - scope: local
+      #   name: localDICE
+      #   type: evasion
+      #   epsilon: [0.2]
+      #   nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
 
     training:
       max_epochs: 300
@@ -36,48 +54,49 @@ experiment_templates:
     optimizer:
       name: adam
       params:
-        lr: [0.01]
-        weight_decay: [0.0005]
+        lr: 0.01
+        weight_decay: 0.0005
 
     loss:
       name: CE
     
-  - name: Another Experiment
-    seed: [0, 1]
-    device: cuda
+  # - name: Another Experiment
+  #   seed: [0, 1]
+  #   device: cuda
 
-    model:
-      name: GAT
-      params:
-        hidden_channels: [64, 128]
+  #   model:
+  #     name: GAT
+  #     params:
+  #       hidden_channels: [64, 128]
     
-    dataset:
-      name: cora
-      path: ./datasets
-      make_undirected: True
+  #   dataset:
+  #     name: cora
+  #     root: ./datasets
+  #     make_undirected: True
 
-    attack:
-      - scope: global
-        name: DICE
-        type: poison
-        epsilon: [0.2, 0.3]
-      - scope: local
-        name: localDICE
-        type: evasion
-        epsilon: [0.05, 0.1, 0.2]
+  #   attack:
+  #     - scope: global
+  #       name: DICE
+  #       type: poison
+  #       epsilon: [0.2, 0.3]
+  #     - scope: local
+  #       name: localDICE
+  #       type: evasion
+  #       epsilon: [0.05, 0.1, 0.2]
+  #       nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-    training:
-      max_epochs: 400
-      patience: 200
+  #   training:
+  #     max_epochs: 400
+  #     patience: 200
     
-    optimizer:
-      name: adam
-      params:
-        lr: [0.01]
-        weight_decay: [0.0005]
+  #   optimizer:
+  #     name: adam
+  #     params:
+  #       lr: [0.01]
+  #       weight_decay: [0.0005]
 
-    loss:
-      name: CE
+  #   loss:
+  #     name: CE
   
   
   

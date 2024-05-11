@@ -4,7 +4,7 @@ from gnn_toolbox.common import (prepare_dataset,
                                 train, 
                                 classification_statistics,
                                 gen_local_attack_nodes)
-from gnn_toolbox.experiment_handler.create_modules import create_model, create_attack, create_dataset, create_optimizer, create_loss
+from gnn_toolbox.experiment_handler.create_modules import create_model, create_global_attack, create_local_attack, create_dataset, create_optimizer, create_loss
 
 import torch
 from torchtyping import TensorType
@@ -22,10 +22,8 @@ import logging
 
 
 def run_experiment(experiment, experiment_dir, artifact_manager):
-    print('experiment', experiment)
-    writer = SummaryWriter(f"{experiment_dir}")
-    # ConfigManager.update_config(experiment)
-    # experiment = ConfigManager.get_config()
+    # print('experiment', experiment)
+    # writer = SummaryWriter(f"{experiment_dir}")
     seed_everything(experiment['seed'])
     device = experiment['device']
     graph_index =  experiment['dataset'].pop('graph_index', None)
@@ -44,11 +42,18 @@ def run_experiment(experiment, experiment_dir, artifact_manager):
     
     perturbed_result = None
     if(experiment['attack']['scope'] == 'global'):
-        if experiment.attack.type == 'poison':
+        if experiment['attack']['type'] == 'poison':
             pert_adj, pert_attr = global_attack(experiment['attack'], attr, adj, labels, split['train'], model, device, num_edges, make_undirected)
             
-            perturbed_result = train_and_evaluate(model, pert_attr, pert_adj, attr, adj, labels, split, device, writer, experiment, is_unattacked_model=False)
-        elif experiment.attack.type == 'evasion':
+            model_path, perturbed_result = artifact_manager.model_exists(experiment, is_unattacked_model=False)
+            
+            if model_path is None or perturbed_result is None:
+            #     model.load_state_dict(torch.load(model_path))
+            #     model.to(device)
+            #     return 
+            # else:    
+                perturbed_result = train_and_evaluate(model, pert_attr, pert_adj, attr, adj, labels, split, device, experiment, artifact_manager, is_unattacked_model=False)
+        elif experiment['attack']['type'] == 'evasion':
             pert_adj, pert_attr = global_attack(experiment['attack'], attr, adj, labels, split['test'], model, device, num_edges, make_undirected)
             
             logits, accuracy = evaluate_model(model=model, attr=pert_attr, adj=pert_adj, labels=labels, idx_test=split['test'], device=device)
@@ -58,9 +63,7 @@ def run_experiment(experiment, experiment_dir, artifact_manager):
                 'accuracy': accuracy,
             }
         
-    elif(experiment['attack']['scope'] == 'local'):
-        # * use the clean train model and check against pertubed test
-        
+    elif(experiment['attack']['scope'] == 'local'):        
         perturbed_result = local_attack(experiment, attr, adj, labels, split, model, device, make_undirected)
 
     all_result = {
@@ -72,8 +75,8 @@ def run_experiment(experiment, experiment_dir, artifact_manager):
 
 
 def clean_train(current_config, artifact_manager, model, attr, adj, labels, split, device):
-    model_path, result = artifact_manager.model_exists(current_config)
-    if model_path:
+    model_path, result = artifact_manager.model_exists(current_config, is_unattacked_model=True)
+    if model_path and result:
         model.load_state_dict(torch.load(model_path))
         model.to(device)
         # print('accuracy after model retrieved: ', evaluate_global(model, attr, adj, labels, split['test']), current_config.device)
@@ -84,7 +87,6 @@ def clean_train(current_config, artifact_manager, model, attr, adj, labels, spli
     return result
     
 def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels, split, device, current_config, artifact_manager, is_unattacked_model):
-    # Move data to the device (GPU or CPU)
     model = model.to(device)
     train_attr = train_attr.to(device)
     train_adj = train_adj.to(device)
@@ -96,7 +98,6 @@ def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels
     for module in model.modules():
         if hasattr(module, 'reset_parameters'):
             module.reset_parameters()
-    # check for the model        
     
     optimizer_params = current_config['optimizer'].get('params', {})
 
@@ -106,14 +107,10 @@ def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels
     
     loss = create_loss(current_config['loss']['name'], **loss_params)
     
-    # Train the model
     result = train(model=model, attr=train_attr, adj=train_adj, labels=labels, idx_train=split['train'], idx_val=split['valid'], idx_test=split['test'], optimizer=optimizer, loss=loss, **current_config['training'])
 
-    # Evaluate the model
     _, accuracy = evaluate_model(model=model, attr=test_attr, adj=test_adj, labels=labels, idx_test=split['test'], device=device)
-    
-    
-        
+ 
     result.append({
         'Test accuracy after best model retrieval': accuracy
     })
@@ -126,7 +123,7 @@ def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels
 
 def global_attack(attack_info, attr, adj, labels, idx_attack, model, device, num_edges, make_undirected):
     attack_params = getattr(attack_info, 'params', {})
-    attack_model = create_attack(attack_info['name'])(
+    attack_model = create_global_attack(attack_info['name'])(
         attr=attr, adj=adj, labels=labels, idx_attack=idx_attack,
         model=model, device=device, make_undirected=make_undirected, **attack_params)
     
@@ -137,7 +134,7 @@ def global_attack(attack_info, attr, adj, labels, idx_attack, model, device, num
 
 def local_attack(experiment, attr, adj, labels, split, model, device, make_undirected):
     attack_params = getattr(experiment['attack'], 'params', {})
-    attack_model = create_attack(experiment['attack']['name'])(
+    attack_model = create_local_attack(experiment['attack']['name'])(
         attr=attr, adj=adj, labels=labels, 
         idx_attack=split['test'],
         model=model, device=device, make_undirected=make_undirected, **attack_params)
@@ -210,7 +207,6 @@ def local_attack(experiment, attr, adj, labels, split, model, device, make_undir
             
             _ = train(model=victim, attr=perturbed_attr.to(device), adj=perturbed_adj.to(device), labels=labels.to(device), idx_train=split['train'], idx_val=split['valid'], idx_test=split['test'], optimizer=optimizer, loss=loss, **experiment['training'])
             
-            # hervee eniig attacked_model-oor solichihvol 
             attack_model.set_eval_model(victim)
             logits_poisoning, _ = attack_model.evaluate_local(node)
             attack_model.set_eval_model(model)

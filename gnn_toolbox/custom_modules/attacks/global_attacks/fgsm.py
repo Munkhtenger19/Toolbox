@@ -5,10 +5,11 @@ from tqdm import tqdm
 import torch
 from torch_sparse import SparseTensor
 
-from gnn_toolbox.registry import register_attack
 from gnn_toolbox.custom_modules.attacks.base_attack import DenseAttack
+from gnn_toolbox.registry import register_global_attack
 
-@register_attack("FGSM")
+
+@register_global_attack("FGSM")
 class FGSM(DenseAttack):
     """Greedy Fast Gradient Signed Method.
 

@@ -1,4 +1,0 @@
-model:
-  name: GAT
-  params:
-    hidden_channels: 64

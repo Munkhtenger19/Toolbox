@@ -4,7 +4,7 @@ from gnn_toolbox.custom_modules import *
 ModuleType = Any
 
 registry: Dict[str, Dict[str, ModuleType]] = {
-    "architecture": {},
+    "model": {},
     "global_attack":{},
     "local_attack":{},
     "dataset": {},
@@ -51,7 +51,7 @@ def get_from_registry(category: str, key: str, registry: Dict[str, Dict[str, Mod
         else:
             raise KeyError(f"Module '{key}' not found in category '{category}'. Available options: {list(category_registry.keys())}")
 
-register_architecture = partial(register_module, "architecture")
+register_model = partial(register_module, "model")
 register_global_attack = partial(register_module, "global_attack")
 register_local_attack = partial(register_module, "local_attack")
 register_dataset = partial(register_module, "dataset")

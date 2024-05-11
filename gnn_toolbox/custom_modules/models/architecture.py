@@ -1,18 +1,17 @@
 import torch
 import torch.nn as nn
 import os
-print("Current Working Directory:", os.getcwd())
 import torch.nn.functional as F
 from torch_geometric.nn import GATConv, GCNConv
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 # from gnn_toolbox.custom_modules.models.model
 # import gnn_toolbox
-from gnn_toolbox.registry import register_architecture, registry
+from gnn_toolbox.registry import register_model, registry
 import os
 from typing import Any, Dict, Union
 
 
-@register_architecture("GCN")
+@register_model("GCN")
 class GCN(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, hidden_channels: int, num_layers: int = 2, dropout: float = 0.5, **kwargs):
         super().__init__()
@@ -32,7 +31,7 @@ class GCN(nn.Module):
     #     return F.binary_cross_entropy_with_logits(pred, true), torch.sigmoid(pred)
 
 
-@register_architecture('gcn2')
+@register_model('gcn2')
 class GCN2(nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2):
         super().__init__()
@@ -70,6 +69,4 @@ class GCN2(nn.Module):
 # parameters = list(self.modules())
 # model._extract_model_info()
 
-MODEL_TYPE = Union[GCN, GCN2]
-
-print(registry['architecture'])
+# MODEL_TYPE = Union[GCN, GCN2]

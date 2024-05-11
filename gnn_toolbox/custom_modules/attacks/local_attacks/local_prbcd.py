@@ -14,10 +14,10 @@ from tqdm import tqdm
 
 from gnn_toolbox.custom_modules.attacks.base_attack import SparseLocalAttack
 from gnn_toolbox.custom_modules import utils
-from gnn_toolbox.registry import register_attack
+from gnn_toolbox.registry import register_local_attack
 
 
-@register_attack("LocalPRBCD")
+@register_local_attack("LocalPRBCD")
 class LocalPRBCD(SparseLocalAttack):
 
     @typechecked

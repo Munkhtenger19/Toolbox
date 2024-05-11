@@ -3,3 +3,4 @@ from .attacks import *  # noqa
 from .datasets import *  # noqa
 from .losses import *  # noqa
 from .optimizers import *  # noqa
+from .data_transforms import *  # noqa

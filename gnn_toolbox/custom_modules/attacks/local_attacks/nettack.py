@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from gnn_toolbox.custom_modules.utils import sparse_tensor
 from gnn_toolbox.custom_modules.attacks.base_attack import SparseLocalAttack
-from gnn_toolbox.registry import register_attack
+from gnn_toolbox.registry import register_local_attack
 
 """
 Implementation of the method proposed in the paper:
@@ -24,7 +24,7 @@ Daniel Zügner
 Technical University of Munich
 """
 
-@register_attack("Nettack")
+@register_local_attack("Nettack")
 class Nettack(SparseLocalAttack):
     """Wrapper around the implementation of the method proposed in the paper:
     'Adversarial Attacks on Neural Networks for Graph Data'

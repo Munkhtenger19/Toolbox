@@ -14,7 +14,7 @@ class ArtifactManager:
     
     def hash_parameters(self, params):
         params_string = json.dumps(params, sort_keys=True)
-        return hashlib.sha256(params_string.encode()).hexdigest()
+        return hashlib.md5(params_string.encode()).hexdigest()
                 
     def save_model(self, model, params, result, is_unattacked_model):
         if is_unattacked_model:
@@ -22,7 +22,7 @@ class ArtifactManager:
             model_suffix = f"{params['model']['name']}_{params['dataset']['name']}.pt"
             result_file_name = "result.json"
         else:
-            model_suffix = f"{params['attack']['name']}_{params['model']['name']}_{params['dataset']['name']}.pt"
+            model_suffix = f"{params['model']['name']}_{params['dataset']['name']}_{params['attack']['name']}.pt"
             result_file_name = "attacked_result.json"
 
         hash_id = self.hash_parameters(params)
@@ -42,35 +42,78 @@ class ArtifactManager:
         except Exception as e:
             logging.error(f"Failed to save model or results: {e}")
         else:
-            logging.info('SAVED MODEL')
+            logging.info(f'Saved the model {model_suffix} at {model_dir}')
 
-    def model_exists(self, experiment_params):
+    def model_exists(self, params, is_unattacked_model):
         """ Check if a model with the given parameters already exists. """
-        params = {key: value for key, value in experiment_params.items() if key != 'attack'}
+        if is_unattacked_model:
+            params = {key: value for key, value in params.items() if key != 'attack'}
         hash_id = self.hash_parameters(params)
         params_dir = self.cache_directory / f"{hash_id}"
         if self.folder_exists(params_dir):
-            params_path = params_dir / 'params.json'
-            with params_path.open('r') as file:
-                saved_params = json.load(file)
-            if params == saved_params: # * i need deepdiff
-                model_path = params_dir / f"{params['model']['name']}_{params['dataset']['name']}.pt"
+            # params_path = params_dir / 'params.json'
+            # with params_path.open('r') as file:
+            #     saved_params = json.load(file)
+            if is_unattacked_model:
+                model_name = f"{params['model']['name']}_{params['dataset']['name']}.pt"
+                model_path = params_dir / model_name
                 result_path = params_dir / 'result.json'
-                print('FOUND MODEL')
+                logging.info(f'Found the unattacked trained model at {model_path}')
                 if result_path.exists():
                     with result_path.open('r') as file:
                         result = json.load(file)
-                    print('FOUND RESULT')
-                    return model_path, result
+                    logging.info(f'Found the {model_name} training result at {result_path}')
+            else:
+                attacked_model_name = f"{params['model']['name']}_{params['dataset']['name']}_{params['attack']['name']}.pt"
+                model_path = params_dir / attacked_model_name
+                result_path = params_dir / 'attacked_result.json'
+                logging.info(f'Found the poisoned model at {model_path}')
+                if result_path.exists():
+                    with result_path.open('r') as file:
+                        result = json.load(file)
+                    logging.info(f'Found the poisoned {attacked_model_name} training result at {result_path}')
+            return model_path, result
         return None, None
-        # model_path = self.cache_directory / f"{hash_id}.pt"
 
     
+def hash_parameters(params):
+    params_string = json.dumps(params, sort_keys=True)
+    return hashlib.md5(params_string.encode()).hexdigest()
 
-
+a = {'a':{
+    'wtf': 1,
+    'c':{
+        'd':{
+            'f': 1,
+        },
+        'w': 1,
+        'e': 2
+    },
+    }
+}
     
-    
-        
+a2 = {'a':{
+    'c':{
+        'e': 2,
+        'w': 1,
+        'd':{
+            'f': 1
+        }
+    },
+    'wtf': 1
+    }
+}    
+a2_ =json.dumps(a2, sort_keys=True)
+a_ = (json.dumps(a, sort_keys=True))
+a_dict = json.loads(a_)
+# print(a_dict['a'])
+# if a_ == a2_:
+#     print('yes')
+# else:
+#     print('no')
+# print(hash_parameters(a))
+# print(hash_parameters(a2))
+# print(hash_parameters(a) == hash_parameters(a2))
 
 # params = {'a': 1, 'b': 2}
 # params2 = {'a': 1, 'b': 3}

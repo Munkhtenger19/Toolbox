@@ -24,6 +24,9 @@ def logger_setup(logging_level):
         'CRITICAL': logging.CRITICAL
     }
     
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+    
     logger = logging.getLogger()
     logging_level = levels.get(logging_level.upper(), logging.INFO)
     logger.setLevel(logging_level)

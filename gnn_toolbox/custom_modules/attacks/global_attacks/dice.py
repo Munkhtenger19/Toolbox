@@ -7,9 +7,9 @@ from tqdm import tqdm
 
 import gnn_toolbox.custom_modules.utils as utils
 from gnn_toolbox.custom_modules.attacks.base_attack import SparseAttack
-from gnn_toolbox.registry import register_attack
+from gnn_toolbox.registry import register_global_attack
 
-@register_attack("DICE")
+@register_global_attack("DICE")
 class DICE(SparseAttack):
     """DICE Attack
 

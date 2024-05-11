@@ -1,10 +1,6 @@
 from os.path import dirname, basename, isfile, join
 import glob
 
-from .global_attacks import *
-from .local_attacks import *
-from . import *
-
 modules = glob.glob(join(dirname(__file__), "*.py"))
 __all__ = [
     basename(f)[:-3] for f in modules

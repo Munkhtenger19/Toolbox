@@ -2,9 +2,9 @@ import torch
 from torch_sparse import SparseTensor
 
 from gnn_toolbox.custom_modules.attacks.base_attack import SparseLocalAttack
-from gnn_toolbox.registry import register_attack
+from gnn_toolbox.registry import register_local_attack
 
-@register_attack("localDICE")
+@register_local_attack("localDICE")
 class LocalDICE(SparseLocalAttack):
     """A Local version of the DICE Attack
 

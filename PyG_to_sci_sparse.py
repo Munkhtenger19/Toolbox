@@ -249,14 +249,16 @@ import torch.nn.functional as F
 from torch.optim import Adam
 from torch_geometric.nn import GCN
 from torch_geometric.datasets import Amazon
-from torch_geometric.datasets import QM9, CoraFull
+from torch_geometric.datasets import QM9, CoraFull, Planetoid
 import inspect
 from gnn_toolbox.common import is_directed
 coraa = CoraFull(root='./datasets', transform=T.ToSparseTensor())
+cora = Planetoid(name='cora', root='./datasets')
 
-d = coraa[0]
-print('coraa', d)
-print('is_directed', is_directed(d.adj_t))
+
+# d = coraa[0]
+# print('coraa', d)
+# print('is_directed', is_directed(d.adj_t))
 # init = inspect.signature(Planetoid )
 # if 'name' in init.parameters.keys():
 #     print('yesbitch')
@@ -309,45 +311,45 @@ print('is_directed', is_directed(d.adj_t))
 # model1= GCN(in_channels=dataset.num_features, out_channels=dataset.num_classes, hidden_channels=16, num_layers=2, dropout=0.5)
 # model2 = GCN(in_channels=dataset.num_features, out_channels=dataset.num_classes, hidden_channels=16, num_layers=2, dropout=0.5)
 
-# def train(model, data, epochs=200, lr=0.01, weight_decay=5e-4):
-#     model.train()
-#     optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-#     for _ in range(epochs):
-#         optimizer.zero_grad()
-#         pred = model(data.x, data.edge_index)
-#         loss = F.cross_entropy(pred[data.train_mask], data.y[data.train_mask])
-#         loss.backward()
-#         optimizer.step()
+def train(model, data, epochs=200, lr=0.01, weight_decay=5e-4):
+    model.train()
+    optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    for _ in range(epochs):
+        optimizer.zero_grad()
+        pred = model(data.x, data.edge_index)
+        loss = F.cross_entropy(pred[data.train_mask], data.y[data.train_mask])
+        loss.backward()
+        optimizer.step()
 
-# def accuracy(pred, y, mask):
-#     return (pred.argmax(-1)[mask] == y[mask]).float().mean()
+def accuracy(pred, y, mask):
+    return (pred.argmax(-1)[mask] == y[mask]).float().mean()
 
-# @torch.no_grad()
-# def test(model, data):
-#     model.eval()
-#     pred = model(data.x, data.edge_index)
-#     return float(accuracy(pred, data.y, data.test_mask))
+@torch.no_grad()
+def test(model, data):
+    model.eval()
+    pred = model(data.x, data.edge_index)
+    return float(accuracy(pred, data.y, data.test_mask))
 
 # train(model1, data)
 # print('model1 acc', test(model1, data))
 # attr, adj, labels, splits, n = prep_graph(dataset1, make_undirected=False)
 
-# def train2(model, attr, adj, split, label, epochs=200, lr=0.01, weight_decay=5e-4):
-#     model = model.to('cuda')
-#     model.train()
-#     optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-#     for _ in range(epochs):
-#         optimizer.zero_grad()
-#         pred = model(attr, adj.t())
-#         loss = F.cross_entropy(pred[split['train']], label[split['train']])
-#         loss.backward()
-#         optimizer.step()
+def train2(model, attr, adj, split, label, epochs=200, lr=0.01, weight_decay=5e-4):
+    model = model.to('cuda')
+    model.train()
+    optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    for _ in range(epochs):
+        optimizer.zero_grad()
+        pred = model(attr, adj.t())
+        loss = F.cross_entropy(pred[split['train']], label[split['train']])
+        loss.backward()
+        optimizer.step()
     
-#     with torch.no_grad():
-#         model.eval()
-#         pred = model(attr, adj.t())
-#         acc = float(accuracy(pred, label, split['test']))
-#         print('model2 acc', acc)
+    with torch.no_grad():
+        model.eval()
+        pred = model(attr, adj.t())
+        acc = float(accuracy(pred, label, split['test']))
+        print('model2 acc', acc)
 
 
 # print(train2(model2, attr, adj, splits, labels))

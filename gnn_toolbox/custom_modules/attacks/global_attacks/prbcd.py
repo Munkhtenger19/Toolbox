@@ -13,9 +13,9 @@ from torch_sparse import SparseTensor
 # from rgnn_at_scale.models import MODEL_TYPE
 from gnn_toolbox.custom_modules import utils
 from gnn_toolbox.custom_modules.attacks.base_attack import SparseAttack
-from gnn_toolbox.registry import register_attack
+from gnn_toolbox.registry import register_global_attack
 
-@register_attack("PRBCD")
+@register_global_attack("PRBCD")
 class PRBCD(SparseAttack):
     """Sampled and hence scalable PGD attack for graph data.
     """
@@ -174,7 +174,7 @@ class PRBCD(SparseAttack):
 
     def _get_logits(self, attr: torch.Tensor, edge_index: torch.Tensor, edge_weight: torch.Tensor):
         return self.attacked_model(
-            data=attr.to(self.device),
+            attr.to(self.device),
             adj=(edge_index.to(self.device), edge_weight.to(self.device))
         )
 

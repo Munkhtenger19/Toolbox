@@ -13,9 +13,9 @@ from torch_sparse import SparseTensor
 from tqdm import tqdm
 
 from gnn_toolbox.custom_modules.attacks.base_attack import DenseAttack
-from gnn_toolbox.registry import register_attack
+from gnn_toolbox.registry import register_global_attack
 
-@register_attack("PGD")
+@register_global_attack("PGD")
 class PGD(DenseAttack):
     """L_0 norm Projected Gradient Descent (PGD) attack as proposed in:
     Kaidi Xu, Hongge Chen, Sijia Liu, Pin Yu Chen, Tsui Wei Weng, Mingyi Hong, and Xue Lin.Topology attack and defense
@@ -66,7 +66,7 @@ class PGD(DenseAttack):
             Number of edges to be perturbed (assuming an undirected graph)
         """
         self.complementary = None
-        self.adj_changes = torch.zeros(int(self.n * (self.n - 1) / 2), dtype=torch.float, device=self.device)
+        self.adj_changes = torch.zeros(int(self.n * (self.n - 1) / 2), dtype=torch.float64, device=self.device)
         self.adj_changes.requires_grad = True
 
         self.attacked_model.eval()

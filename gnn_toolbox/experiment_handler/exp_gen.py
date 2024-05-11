@@ -1,9 +1,10 @@
 import os
 import yaml
+import json
 from pathlib import Path
 from itertools import product
 import shutil
-
+import pprint
 
 
 KEEP_AS_LIST =['attack.nodes', 'dataset.transforms']
@@ -69,10 +70,7 @@ def folder_exists(folder_path):
     folder = Path(folder_path)
     return folder.exists() and folder.is_dir()  
 
-def generate_experiments_from_yaml(file):
-    with open(file, "r") as f:
-        experiments_config = yaml.safe_load(f)
-    
+def generate_experiments_from_yaml(experiments_config):
     output_dir = Path(experiments_config["output_dir"])
     resume_output = experiments_config.get("resume_output", False)
     
@@ -94,8 +92,6 @@ def generate_experiments_from_yaml(file):
             first_depth_exp_gen.append(experiment)
             
     all_experiments={}
-    # test2 = []
-    # exp_test = []
     id=1
     for experiment in first_depth_exp_gen:
         experiment_template = flatten(experiment)
@@ -103,7 +99,6 @@ def generate_experiments_from_yaml(file):
         experiments = [experiment_template.copy() for _ in range(len(combinations))]
         
         for experiment, combination in zip(experiments, combinations):
-            print('id', id)
             for key, value in combination.items():
                 experiment[key] = value
             experiment = unflatten(experiment)
@@ -113,9 +108,6 @@ def generate_experiments_from_yaml(file):
             all_experiments[experiment_dir] = experiment
             id+=1
             
-    # print('all', test2)
-    # print('exp', exp_test)
-    print('all', all_experiments)
     return all_experiments
 
 def setup_directories(base_dir, experiment_name, id, resume_output):
@@ -150,14 +142,14 @@ def unflatten(dictionary):
 def tensorboard_logger():
     pass
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-# # # Join the directory path and your file name
-file_path = os.path.join(dir_path, 'good_1.yaml')
-b = generate_experiments_from_yaml(file_path)
-print(len(b))
-# print(i)
-def foo(lr):
-    print(lr)
+# dir_path = os.path.dirname(os.path.realpath(__file__))
+# # # # Join the directory path and your file name
+# file_path = os.path.join(dir_path, 'good_1.yaml')
+# b = generate_experiments_from_yaml(file_path)
+# print(len(b))
+# # print(i)
+# def foo(lr):
+#     print(lr)
 # graph_index = i['dataset'].pop('graph_index', None)
 
 # foo( **getattr(i['optimizer']['pz'], {'lr': 0.01}))

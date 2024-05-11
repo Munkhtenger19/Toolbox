@@ -1,6 +1,8 @@
+import logging
+from inspect import signature
+
 from torch_geometric.transforms import Compose
 from torch_geometric.data import Dataset
-from inspect import signature
 
 from gnn_toolbox.registry import registry, get_from_registry
 
@@ -19,20 +21,20 @@ def create_transforms(configs):
         transform_cls = get_from_registry("transform", name, registry)
         if transform_cls is None:
             raise ValueError(f"Transform '{name}' not found in the registry.")
-
+        logging.info(f"Creating transform '{name}' with parameters: {params}")
         transforms.append(transform_cls(**params))
 
     return Compose(transforms)
 
-def create_dataset(name: str, root: str, transform_configs=None, **kwargs) -> Dataset:
+def create_dataset(name: str, root: str, transforms=None, **kwargs) -> Dataset:
     dataset = get_from_registry("dataset", name, registry)
-    transforms = create_transforms(transform_configs) if transform_configs else None
+    transforms = create_transforms(transforms) if transforms else None
     if 'name' in signature(dataset).parameters.keys():
         return dataset(name = name, root=root, transform=transforms)
     return dataset(root=root, transform=transforms, **kwargs)
 
 def create_model(model):
-    architecture = get_from_registry("architecture", model['name'], registry)
+    architecture = get_from_registry("model", model['name'], registry)
     model = architecture(**model['params'])
     return model
 
@@ -48,6 +50,8 @@ def create_optimizer(optimizer_name, model, **kwargs):
     optimizer = get_from_registry("optimizer", optimizer_name, registry)
     return optimizer(model.parameters(), **kwargs)
 
-def create_loss(loss_name):
+def create_loss(loss_name, **kwargs):
     loss = get_from_registry("loss", loss_name, registry)
-    return loss
+    if 'logits' and 'labels' in signature(loss).parameters.keys():
+        return loss
+    return loss(**kwargs)
