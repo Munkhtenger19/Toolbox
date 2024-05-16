@@ -12,14 +12,13 @@ from torch_sparse import SparseTensor
 
 from tqdm import tqdm
 
-from gnn_toolbox.custom_modules.attacks.base_attack import SparseLocalAttack
-from gnn_toolbox.custom_modules import utils
+from gnn_toolbox.custom_components.attacks.base_attack import LocalAttack
+from gnn_toolbox.custom_components import utils
 from gnn_toolbox.registry import register_local_attack
 
 
 @register_local_attack("LocalPRBCD")
-class LocalPRBCD(SparseLocalAttack):
-
+class LocalPRBCD(LocalAttack):
     @typechecked
     def __init__(self,
                  loss_type: str = 'Margin',
@@ -55,7 +54,7 @@ class LocalPRBCD(SparseLocalAttack):
         self.lr_factor = lr_factor
         self.lr_factor *= max(math.sqrt(self.n / self.block_size), 1.)
 
-    def _attack(self, n_perturbations: int, node_idx: int, **kwargs):
+    def attack(self, n_perturbations: int, node_idx: int, **kwargs):
 
         self.sample_search_space(node_idx, n_perturbations)
         best_margin = float('Inf')
@@ -66,7 +65,7 @@ class LocalPRBCD(SparseLocalAttack):
             logits_orig = self.get_surrogate_logits(node_idx).to(self.device)
             loss_orig = self.calculate_loss(logits_orig, self.labels[node_idx, None]).to(self.device)
             statistics_orig = LocalPRBCD.classification_statistics(logits_orig, self.labels[node_idx])
-            logging.info(f'Original: Loss: {loss_orig.item()} Statstics: {statistics_orig}\n')
+            logging.debug(f'Original: Loss: {loss_orig.item()} Statistics: {statistics_orig}\n')
             del logits_orig
             del loss_orig
 
@@ -84,7 +83,7 @@ class LocalPRBCD(SparseLocalAttack):
             if epoch == 0:
                 classification_statistics = LocalPRBCD.classification_statistics(
                     logits, self.labels[node_idx].to(self.device))
-                logging.info(f'Initial: Loss: {loss.item()} Statstics: {classification_statistics}\n')
+                logging.debug(f'Initial: Loss: {loss.item()} Statistics: {classification_statistics}\n')
 
             gradient = utils.grad_with_checkpoint(loss, self.modified_edge_weight_diff)[0]
 
@@ -105,11 +104,11 @@ class LocalPRBCD(SparseLocalAttack):
                 classification_statistics = LocalPRBCD.classification_statistics(
                     logits, self.labels[node_idx].to(self.device))
                 if epoch % self.display_step == 0:
-                    logging.info(f'\nEpoch: {epoch} Loss: {loss.item()} Statstics: {classification_statistics}\n')
-                    logging.info(f"Gradient mean {gradient.abs().mean().item()} std {gradient.abs().std().item()} "
+                    logging.debug(f'\nEpoch: {epoch} Loss: {loss.item()} Statstics: {classification_statistics}\n')
+                    logging.debug(f"Gradient mean {gradient.abs().mean().item()} std {gradient.abs().std().item()} "
                                  f"with base learning rate {n_perturbations * self.lr_factor}")
                     if torch.cuda.is_available():
-                        logging.info(f'Cuda memory {torch.cuda.memory_allocated() / (1024 ** 3)}')
+                        logging.debug(f'Cuda memory {torch.cuda.memory_allocated() / (1024 ** 3)}')
 
                 if self.with_early_stopping and best_margin > classification_statistics['margin']:
                     best_margin = classification_statistics['margin']
@@ -122,7 +121,7 @@ class LocalPRBCD(SparseLocalAttack):
                 if epoch < self.epochs_resampling - 1:
                     self.resample_search_space(node_idx, n_perturbations, gradient)
                 elif self.with_early_stopping and epoch == self.epochs_resampling - 1:
-                    logging.info(
+                    logging.debug(
                         f'Loading search space of epoch {best_epoch} (margin={best_margin}) for fine tuning\n')
                     self.current_search_space = best_search_space.clone().to(self.device)
                     self.modified_edge_weight_diff = best_edge_weight_diff.clone().to(self.device)
@@ -136,7 +135,7 @@ class LocalPRBCD(SparseLocalAttack):
             self.perturbed_edges = torch.tensor([])
             self.adj_adversary = None
             self.attr_adversary = self.attr
-            logging.info(f"Failed to attack node {node_idx} with n_perturbations={n_perturbations}")
+            logging.debug(f"Failed to attack node {node_idx} with n_perturbations={n_perturbations}")
             return None
 
         if self.with_early_stopping:

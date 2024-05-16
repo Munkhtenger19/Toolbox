@@ -2,7 +2,7 @@ import torch
 import scipy.sparse as sp
 from torch_sparse import SparseTensor, coalesce
 from typing import Tuple, Union, Sequence
-
+import numpy as np
 
 class DotDict(dict):     
     """
@@ -38,12 +38,21 @@ def grad_with_checkpoint(outputs: Union[torch.Tensor, Sequence[torch.Tensor]],
     inputs = (inputs,) if isinstance(inputs, torch.Tensor) else tuple(inputs)
 
     for input in inputs:
+        # input.retain_grad()
         if not input.is_leaf:
             input.retain_grad()
-
+    
     torch.autograd.backward(outputs)
 
     grad_outputs = []
+    # for input in inputs:
+    #     if input.grad is not None:
+    #         grad_outputs.append(input.grad.clone())
+    #         input.grad.zero_()
+    #     else:
+    #         # Append zeros in the same shape as the input if no gradient was computed
+    #         grad_outputs.append(torch.ones_like(input))
+            
     for input in inputs:
         grad_outputs.append(input.grad.clone())
         input.grad.zero_()
@@ -113,3 +122,22 @@ def sparse_tensor(spmat: sp.spmatrix, grad: bool = False):
     else:
         dtype = torch.float32
     return SparseTensor.from_scipy(spmat).to(dtype).coalesce()
+
+def accuracy(logits: torch.Tensor, labels: torch.Tensor, split_idx: np.ndarray) -> float:
+    """Returns the accuracy for a tensor of logits, a list of lables and and a split indices.
+
+    Parameters
+    ----------
+    prediction : torch.Tensor
+        [n x c] tensor of logits (`.argmax(1)` should return most probable class).
+    labels : torch.Tensor
+        [n x 1] target label.
+    split_idx : np.ndarray
+        [?] array with indices for current split.
+
+    Returns
+    -------
+    float
+        the Accuracy
+    """
+    return (logits.argmax(1)[split_idx] == labels[split_idx]).float().mean().item()

@@ -5,7 +5,7 @@ from tqdm import tqdm
 import torch
 from torch_sparse import SparseTensor
 
-from gnn_toolbox.custom_modules.attacks.base_attack import DenseAttack
+from gnn_toolbox.custom_components.attacks.base_attack import DenseAttack
 from gnn_toolbox.registry import register_global_attack
 
 
@@ -31,11 +31,18 @@ class FGSM(DenseAttack):
         super().__init__(**kwargs)
 
         assert self.make_undirected, 'Attack only implemented for undirected graphs'
-
+        # self.adj_perturbed = self.adj.clone()
+        # self.adj_perturbed = self.adj.T.clone().requires_grad_(True).to(self.device)
         self.adj_perturbed = self.adj.clone().requires_grad_(True).to(self.device)
         self.n_perturbations = 0
-
+        from torch_geometric.datasets import Planetoid
+        from torch_geometric.transforms import ToUndirected
+        cora = Planetoid(root='datasets', name='Cora', transform=ToUndirected())
+        data = cora[0]
+        # self.adj_perturbed = data.edge_index.clone().requires_grad_(True).to(self.device)
+        
         self.adj = self.adj.to(self.device)
+        # self.attr = data.x.to(self.device)
         self.attr = self.attr.to(self.device)
         self.attacked_model = self.attacked_model.to(self.device)
 
@@ -55,7 +62,9 @@ class FGSM(DenseAttack):
         self.n_perturbations += n_perturbations
 
         for _ in tqdm(range(n_perturbations)):
-            logits = self.attacked_model(self.attr, self.adj_perturbed)
+            print('shape self.adj_perturbed', self.adj_perturbed.shape)
+            print('shape self.attr', self.attr.shape)
+            logits = self.attacked_model(self.attr, self.adj_perturbed.data)
 
             loss = self.calculate_loss(logits[self.idx_attack], self.labels[self.idx_attack])
 

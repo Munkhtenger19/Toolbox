@@ -9,8 +9,8 @@ import torch
 from torch.nn import Identity
 from tqdm import tqdm
 
-from gnn_toolbox.custom_modules.utils import sparse_tensor
-from gnn_toolbox.custom_modules.attacks.base_attack import SparseLocalAttack
+from gnn_toolbox.custom_components.utils import sparse_tensor
+from gnn_toolbox.custom_components.attacks.base_attack import LocalAttack
 from gnn_toolbox.registry import register_local_attack
 
 """
@@ -25,7 +25,7 @@ Technical University of Munich
 """
 
 @register_local_attack("Nettack")
-class Nettack(SparseLocalAttack):
+class Nettack(LocalAttack):
     """Wrapper around the implementation of the method proposed in the paper:
     'Adversarial Attacks on Neural Networks for Graph Data'
     by Daniel Zügner, Amir Akbarnejad and Stephan Günnemann,
@@ -46,13 +46,13 @@ class Nettack(SparseLocalAttack):
     """
 
     def __init__(self, **kwargs):
-        SparseLocalAttack.__init__(self, **kwargs)
+        LocalAttack.__init__(self, **kwargs)
 
         assert self.make_undirected, 'Attack only implemented for undirected graphs'
 
-        assert len(self.attacked_model.layers) == 2, "Nettack supports only 2 Layer Linear GCN as surrogate model"
-        assert isinstance(self.attacked_model._modules['activation'], Identity), \
-            "Nettack only supports Linear GCN as surrogate model"
+        # assert len(self.attacked_model.layers) == 2, "Nettack supports only 2 Layer Linear GCN as surrogate model"
+        # assert isinstance(self.attacked_model._modules['act'], Identity), \
+        #     "Nettack only supports Linear GCN as surrogate model"
 
         self.sp_adj = self.adj.to_scipy(layout="csr")
         self.sp_attr = SparseTensor.from_dense(self.attr).to_scipy(layout="csr")

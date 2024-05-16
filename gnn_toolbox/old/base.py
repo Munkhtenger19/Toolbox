@@ -3,10 +3,10 @@ from cmd_args import parse_args
 from config_def import cfg, set_run_dir
 import yaml
 import logging
-from gnn_toolbox.custom_modules.lightning_train import train
+from gnn_toolbox.custom_components.lightning_train import train
 from torch_geometric import seed_everything
 from gnn_toolbox.old.utils3 import create_model, auto_select_device
-from gnn_toolbox.custom_modules.lightning_train import BaseDataModule
+from gnn_toolbox.custom_components.lightning_train import BaseDataModule
 from sacred import Experiment
 ex = Experiment("Run_experiments")
 

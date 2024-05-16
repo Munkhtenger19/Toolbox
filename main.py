@@ -11,7 +11,7 @@ def main(file):
     try:
         experiments_config = load_and_validate_yaml(file)
         experiments = generate_experiments_from_yaml(experiments_config)
-        artifact_manager = ArtifactManager('cache')
+        artifact_manager = ArtifactManager('cache2')
         logging.info(f'Running {len(experiments)} experiments')
         for curr_dir, experiment in experiments.items():  
             result, experiment_cfg = run_experiment(experiment, curr_dir, artifact_manager)

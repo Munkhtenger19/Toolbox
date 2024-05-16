@@ -1,6 +1,7 @@
-output_dir: ./output2  
+output_dir: ./output6
 # resume_output: False
 # csv_save: True
+# esd: True
 experiment_templates:
   - name: My experiment
     seed: [0]
@@ -8,13 +9,13 @@ experiment_templates:
     model:
       - name: GCN
         params:
-          hidden_channels: 32
+          hidden_channels: 64
     dataset:
-      name: Cora
+      name: Cora  #ogbn-arxiv
       root: ./datasets
-      make_undirected: True
-      transforms:
-        - name: NormalizeFeatures
+      make_undirected: False
+      # transforms:
+      #   - name: NormalizeFeatures
         # - name: Constant
         #   params:
         #     value: 0.8
@@ -36,20 +37,21 @@ experiment_templates:
       #   name: DICE, FGSM, PGD, PRBCD, GreedyRBCD]
       #   type: [poison, evasion]
       #   epsilon: [0.5]
-      - scope: global
-        name: [PRBCD, GreedyRBCD]
+      - scope: local
+        name: [LocalPRBCD, LocalDICE]
         type: poison
-        epsilon: [0.5]
+        epsilon: [0.3]
+        nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
       # - scope: local
-      #   name: localDICE
+      #   name: Nettack
       #   type: evasion
       #   epsilon: [0.2]
-      #   nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+      #   nodes: [0]
 
 
     training:
-      max_epochs: 300
-      patience: 100
+      max_epochs: 100
+      patience: 70
     
     optimizer:
       name: adam

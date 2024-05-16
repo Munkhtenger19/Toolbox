@@ -5,12 +5,12 @@ import torch
 from torch_sparse import SparseTensor
 from tqdm import tqdm
 
-import gnn_toolbox.custom_modules.utils as utils
-from gnn_toolbox.custom_modules.attacks.base_attack import SparseAttack
+import gnn_toolbox.custom_components.utils as utils
+from gnn_toolbox.custom_components.attacks.base_attack import GlobalAttack
 from gnn_toolbox.registry import register_global_attack
 
 @register_global_attack("DICE")
-class DICE(SparseAttack):
+class DICE(GlobalAttack):
     """DICE Attack
 
     Parameters
@@ -140,7 +140,7 @@ class DICE(SparseAttack):
                                             edge_attr=edge_attr,
                                             sparse_sizes=torch.Size([self.n, self.n]))
 
-    def _attack(self,
+    def attack(self,
                 n_perturbations: int,
                 **kwargs):
         add_budget = int(n_perturbations * self.add_ratio)

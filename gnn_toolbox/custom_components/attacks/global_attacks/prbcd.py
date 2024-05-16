@@ -11,12 +11,12 @@ import torch_sparse
 from torch_sparse import SparseTensor
 
 # from rgnn_at_scale.models import MODEL_TYPE
-from gnn_toolbox.custom_modules import utils
-from gnn_toolbox.custom_modules.attacks.base_attack import SparseAttack
+from gnn_toolbox.custom_components import utils
+from gnn_toolbox.custom_components.attacks.base_attack import GlobalAttack
 from gnn_toolbox.registry import register_global_attack
 
 @register_global_attack("PRBCD")
-class PRBCD(SparseAttack):
+class PRBCD(GlobalAttack):
     """Sampled and hence scalable PGD attack for graph data.
     """
 
@@ -93,7 +93,7 @@ class PRBCD(SparseAttack):
         # Loop over the epochs (Algorithm 1, line 5)
         for epoch in tqdm(range(self.epochs)):
             self.perturbed_edge_weight.requires_grad = True
-
+            # self.perturbed_edge_weight.retain_grad()
             # Retreive sparse perturbed adjacency matrix `A \oplus p_{t-1}` (Algorithm 1, line 6)
             edge_index, edge_weight = self.get_modified_adj()
 
@@ -105,9 +105,13 @@ class PRBCD(SparseAttack):
             logits = self._get_logits(self.attr, edge_index, edge_weight)
             # Calculate loss combining all each node (Algorithm 1, line 7)
             loss = self.calculate_loss(logits[self.idx_attack], self.labels[self.idx_attack])
+            # self.perturbed_edge_weight.requires_grad = True
+            # self.perturbed_edge_weight.retain_grad()
+            # loss.requires_grad = True
+            # loss.retain_grad()
             # Retreive gradient towards the current block (Algorithm 1, line 7)
             gradient = utils.grad_with_checkpoint(loss, self.perturbed_edge_weight)[0]
-
+            # gradient = torch.autograd.grad(loss, self.perturbed_edge_weight, allow_unused=True)[0]
             if torch.cuda.is_available() and self.do_synchronize:
                 torch.cuda.empty_cache()
                 torch.cuda.synchronize()
@@ -125,7 +129,7 @@ class PRBCD(SparseAttack):
 
                 # Calculate accuracy after the current epoch (overhead for monitoring and early stopping)
                 edge_index, edge_weight = self.get_modified_adj()
-                logits = self.attacked_model(data=self.attr.to(self.device), adj=(edge_index, edge_weight))
+                logits = self.attacked_model(self.attr.to(self.device), edge_index, edge_weight)
                 accuracy = utils.accuracy(logits, self.labels, self.idx_attack)
                 del edge_index, edge_weight, logits
 
@@ -175,7 +179,8 @@ class PRBCD(SparseAttack):
     def _get_logits(self, attr: torch.Tensor, edge_index: torch.Tensor, edge_weight: torch.Tensor):
         return self.attacked_model(
             attr.to(self.device),
-            adj=(edge_index.to(self.device), edge_weight.to(self.device))
+            edge_index.float().to(self.device),
+            edge_weight.to(self.device)
         )
 
     @torch.no_grad()

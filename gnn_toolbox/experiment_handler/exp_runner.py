@@ -1,8 +1,7 @@
-from gnn_toolbox.custom_modules import *
+from gnn_toolbox.custom_components import *
 from gnn_toolbox.common import (prepare_dataset, 
                                 evaluate_model,
                                 train, 
-                                classification_statistics,
                                 gen_local_attack_nodes)
 from gnn_toolbox.experiment_handler.create_modules import create_model, create_global_attack, create_local_attack, create_dataset, create_optimizer, create_loss
 
@@ -33,7 +32,7 @@ def run_experiment(experiment, experiment_dir, artifact_manager):
     attr, adj, labels, split, num_edges = prepare_dataset(dataset, experiment, graph_index, make_undirected)
     
     model = create_model(experiment['model'])
-    
+    untrained_model_state_dict = model.state_dict()
     # _, accuracy = evaluate_global(model=model, attr=attr, adj=adj, labels=labels, idx_test=split['test'], device=device) 
     
     # print('untrained model accuracy', accuracy)
@@ -43,7 +42,7 @@ def run_experiment(experiment, experiment_dir, artifact_manager):
     perturbed_result = None
     if(experiment['attack']['scope'] == 'global'):
         if experiment['attack']['type'] == 'poison':
-            pert_adj, pert_attr = global_attack(experiment['attack'], attr, adj, labels, split['train'], model, device, num_edges, make_undirected)
+            adversarial_attack, n_perturbations = instantiate_global_attack(experiment['attack'], attr, adj, labels, split['train'], model, device, num_edges, make_undirected)
             
             model_path, perturbed_result = artifact_manager.model_exists(experiment, is_unattacked_model=False)
             
@@ -52,9 +51,24 @@ def run_experiment(experiment, experiment_dir, artifact_manager):
             #     model.to(device)
             #     return 
             # else:    
-                perturbed_result = train_and_evaluate(model, pert_attr, pert_adj, attr, adj, labels, split, device, experiment, artifact_manager, is_unattacked_model=False)
+                try:
+                    adversarial_attack.attack(n_perturbations)
+                    pert_adj, pert_attr = adversarial_attack.get_perturbations()
+                    perturbed_result = train_and_evaluate(model, pert_attr, pert_adj, attr, adj, labels, split, device, experiment, artifact_manager, is_unattacked_model=False)
+                except Exception as e:
+                    logging.exception(e)
+                    logging.error(f"Global poisoning adversarial attack {experiment['attack']['name']} failed to attack the model {experiment['model']['name']}")
+                    return
         elif experiment['attack']['type'] == 'evasion':
-            pert_adj, pert_attr = global_attack(experiment['attack'], attr, adj, labels, split['test'], model, device, num_edges, make_undirected)
+            adversarial_attack, n_perturbations = instantiate_global_attack(experiment['attack'], attr, adj, labels, split['test'], model, device, num_edges, make_undirected)
+            
+            try:
+                adversarial_attack.attack(n_perturbations)
+                pert_adj, pert_attr = adversarial_attack.get_perturbations()
+            except Exception as e:
+                logging.exception(e)
+                logging.error(f"Global evasion adversarial attack {experiment['attack']['name']} failed to attack the model {experiment['model']['name']}")
+                return
             
             logits, accuracy = evaluate_model(model=model, attr=pert_attr, adj=pert_adj, labels=labels, idx_test=split['test'], device=device)
             
@@ -64,11 +78,11 @@ def run_experiment(experiment, experiment_dir, artifact_manager):
             }
         
     elif(experiment['attack']['scope'] == 'local'):        
-        perturbed_result = local_attack(experiment, attr, adj, labels, split, model, device, make_undirected)
+        perturbed_result = execute_local_attack(experiment, attr, adj, labels, split, model, device, make_undirected)
 
     all_result = {
         'clean_result': clean_result,
-        'perturbed_result': perturbed_result,
+        'perturbed_result': perturbed_result if perturbed_result is not None else None,
     }
     # log to tensorboard
     return all_result, experiment
@@ -86,7 +100,7 @@ def clean_train(current_config, artifact_manager, model, attr, adj, labels, spli
     
     return result
     
-def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels, split, device, current_config, artifact_manager, is_unattacked_model):
+def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels, split, device, current_config, artifact_manager, is_unattacked_model, untrained_model_state_dict=None):
     model = model.to(device)
     train_attr = train_attr.to(device)
     train_adj = train_adj.to(device)
@@ -94,7 +108,8 @@ def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels
     test_adj = test_adj.to(device)
     labels = labels.to(device)
     
-
+    if untrained_model_state_dict is not None:
+        model.load(untrained_model_state_dict)
     for module in model.modules():
         if hasattr(module, 'reset_parameters'):
             module.reset_parameters()
@@ -121,27 +136,32 @@ def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels
     
     return result
 
-def global_attack(attack_info, attr, adj, labels, idx_attack, model, device, num_edges, make_undirected):
+def instantiate_global_attack(attack_info, attr, adj, labels, idx_attack, model, device, num_edges, make_undirected):
     attack_params = getattr(attack_info, 'params', {})
-    attack_model = create_global_attack(attack_info['name'])(
-        attr=attr, adj=adj, labels=labels, idx_attack=idx_attack,
-        model=model, device=device, make_undirected=make_undirected, **attack_params)
-    
-    n_perturbations = int(round(attack_info['epsilon'] * num_edges))
-    attack_model.attack(n_perturbations)
-    return attack_model.get_perturbations()
-    
+    try:
+        attack_model = create_global_attack(attack_info['name'])(
+            attr=attr, adj=adj, labels=labels, idx_attack=idx_attack,
+            model=model, device=device, make_undirected=make_undirected, **attack_params)
+        n_perturbations = int(round(attack_info['epsilon'] * num_edges))
+        # attack_model.attack(n_perturbations)
+        return attack_model, n_perturbations
+    except Exception as e:
+        logging.exception(e)
+        logging.error(f"Failed to create the global adversarial attack '{attack_info['name']}'.")
 
-def local_attack(experiment, attr, adj, labels, split, model, device, make_undirected):
+def execute_local_attack(experiment, attr, adj, labels, split, model, device, make_undirected):
     attack_params = getattr(experiment['attack'], 'params', {})
-    attack_model = create_local_attack(experiment['attack']['name'])(
-        attr=attr, adj=adj, labels=labels, 
-        idx_attack=split['test'],
-        model=model, device=device, make_undirected=make_undirected, **attack_params)
-    
+    try:
+        attack_model = create_local_attack(experiment['attack']['name'])(
+            attr=attr, adj=adj, labels=labels, 
+            idx_attack=split['test'],
+            model=model, device=device, make_undirected=make_undirected, **attack_params)
+    except Exception as e:
+        logging.exception(e)
+        logging.error(f"Failed to create local adversarial attack '{experiment['attack']['name']}'.")
+
     results = []
     eps = experiment['attack']['epsilon']
-    # nodes = experiment.attack.nodes
     if 'nodes' not in experiment['attack']:
         epsilon_inverse = int(1 / eps)
         
@@ -150,7 +170,7 @@ def local_attack(experiment, attr, adj, labels, split, model, device, make_undir
         
         # topk = int(experiment.attack.topk) if experiment.attack.topk is not None else 10
 
-        topk = int(experiment['attack'].get('topk', 10))
+        topk = int(experiment['attack'].get('nodes_topk', 10))
     
         nodes = gen_local_attack_nodes(attr, adj, labels, model, split['train'], device, topk=topk, min_node_degree=min_node_degree)
     else:
@@ -161,18 +181,18 @@ def local_attack(experiment, attr, adj, labels, split, model, device, make_undir
         n_perturbations = int((eps * degree).round().item())
         if n_perturbations == 0:
             logging.error(
-                f"Skipping attack for model '{model}' using {experiment['attack']['name']} with eps {eps} at node {node}.")
+                f"Number of perturbations is 0 for model {experiment['model']['name']} using {experiment['attack']['name']} with eps {eps} at node {node}. Skipping the attack to node {node}")
             continue
         try:
             attack_model.attack(n_perturbations, node_idx=node)
         except Exception as e:
             logging.exception(e)
             logging.error(
-                f"Failed to attack model '{model}' using {experiment['attack']['name']} with eps {eps} at node {node}.")
+                f"Adversarial attack {experiment['attack']['name']} failed to attack the model {experiment['model']['name']} using with eps {eps} at node {node}.")
             continue
         
-        logits, initial_logits = attack_model.evaluate_local(node)
-  
+        logits, initial_logits = attack_model.evaluate_node(node)
+        
         results.append({
             'node index': node,
             'node degree': int(degree.item()),
@@ -181,11 +201,11 @@ def local_attack(experiment, attr, adj, labels, split, model, device, make_undir
             'perturbed_edges': attack_model.get_perturbed_edges().cpu().numpy().tolist(),
             'results before attacking (unperturbed data)': {
                 'logits': initial_logits.cpu().numpy().tolist(),
-                **classification_statistics(initial_logits.cpu(), labels[node].long().cpu())
+                **attack_model.classification_statistics(initial_logits.cpu(), labels[node].long().cpu())
             },
             'results after attacking (perturbed data)': {
                 'logits': logits.cpu().numpy().tolist(),
-                **classification_statistics(logits.cpu(), labels[node].long().cpu())
+                **attack_model.classification_statistics(logits.cpu(), labels[node].long().cpu())
             }
             
         })
@@ -208,16 +228,18 @@ def local_attack(experiment, attr, adj, labels, split, model, device, make_undir
             _ = train(model=victim, attr=perturbed_attr.to(device), adj=perturbed_adj.to(device), labels=labels.to(device), idx_train=split['train'], idx_val=split['valid'], idx_test=split['test'], optimizer=optimizer, loss=loss, **experiment['training'])
             
             attack_model.set_eval_model(victim)
-            logits_poisoning, _ = attack_model.evaluate_local(node)
+            logits_poisoning, _ = attack_model.evaluate_node(node)
             attack_model.set_eval_model(model)
             results[-1].update({
                 'results after attacking (perturbed data)':
                 {
                     'logits': logits_poisoning.cpu().numpy().tolist(),
-                    **classification_statistics(logits_poisoning.cpu(), labels[node].long().cpu())
+                    **attack_model.classification_statistics(logits_poisoning.cpu(), labels[node].long().cpu())
                 },
-                'pyg_margin': attack_model._probability_margin_loss(victim(attr.to(device), adj.to(device)),labels, [node]).item()
+                # 'pyg_margin': attack_model._probability_margin_loss(victim(attr.to(device), adj.to(device)),labels, [node]).item()
             })
+        logging.info(f'Node {node} with perturbed edges evaluated on model {experiment["model"]["name"]} using adversarial attack {experiment["attack"]["name"]} with epsilon {eps}')
+        logging.debug(results[-1])
     assert len(results) > 0, "No attack could be made."
     return results
 

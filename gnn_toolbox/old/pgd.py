@@ -12,7 +12,7 @@ import torch
 from torch_sparse import SparseTensor
 from tqdm import tqdm
 
-from gnn_toolbox.custom_modules.attacks.base_attack import DenseAttack
+from gnn_toolbox.custom_components.attacks.base_attack import DenseAttack
 from gnn_toolbox.registry import register_global_attack
 
 @register_global_attack("PGD")
@@ -72,6 +72,8 @@ class PGD(DenseAttack):
         self.attacked_model.eval()
         for t in tqdm(range(self.epochs)):
             modified_adj = self.get_modified_adj()
+            print('shape1', modified_adj.shape)
+            print('shape2', self.attr.shape)
             logits = self.attacked_model(self.attr, modified_adj)
             loss = self.calculate_loss(logits[self.idx_attack], self.labels[self.idx_attack])
             adj_grad = torch.autograd.grad(loss, self.adj_changes)[0]

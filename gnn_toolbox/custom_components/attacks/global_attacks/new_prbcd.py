@@ -7,16 +7,18 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 from tqdm import tqdm
-from torch_sparse import SparseTensor
+# from torch_sparse import SparseTensor
+import torch_sparse
+import scipy.sparse as sp
 
 from torch_geometric.utils import coalesce, to_undirected
-from gnn_toolbox.custom_components.attacks.base_attack import SparseAttack
+from gnn_toolbox.custom_components.attacks.base_attack import GlobalAttack
 from gnn_toolbox.registry import register_global_attack
 # (predictions, labels, ids/mask) -> Tensor with one element
 LOSS_TYPE = Callable[[Tensor, Tensor, Optional[Tensor]], Tensor]
 
 @register_global_attack("PRBCD2")
-class PRBCDAttack(SparseAttack):
+class PRBCDAttack(GlobalAttack):
     r"""The Projected Randomized Block Coordinate Descent (PRBCD) adversarial
     attack from the `Robustness of Graph Neural Networks at Scale
     <https://www.cs.cit.tum.de/daml/robustness-of-gnns-at-scale>`_ paper.
@@ -131,7 +133,7 @@ class PRBCDAttack(SparseAttack):
 
         self.coeffs.update(kwargs)
 
-    def _attack(self, n_perturbations: int, **kwargs):
+    def attack(self, n_perturbations: int, **kwargs):
         row, col, edge_attr = self.adj_adversary.coo()
         edge_index = torch.stack([row, col], dim=0)
         self.attacker(self.attr, edge_index, self.labels, n_perturbations, **kwargs)
@@ -195,7 +197,11 @@ class PRBCDAttack(SparseAttack):
         assert flipped_edges.size(1) <= budget, (
             f'# perturbed edges {flipped_edges.size(1)} '
             f'exceeds budget {budget}')
-        self.adj_adversary = SparseTensor.from_edge_index(perturbed_edge_index, edge_weight, (self.n, self.n))
+        # self.edge_index_adversary = perturbed_edge_index
+        edge_weight = torch.ones(perturbed_edge_index.size(1), device=self.device)
+        # adj = sp.csr_matrix((edge_weight.cpu(), perturbed_edge_index.cpu()), (self.num_nodes, self.num_nodes))
+        # self.adj_adversary = torch_sparse.SparseTensor.from_scipy(adj).coalesce().to(self.device)
+        self.adj_adversary = torch_sparse.SparseTensor(row = perturbed_edge_index[0].to(self.device), col = perturbed_edge_index[1].to(self.device), value = edge_weight)
         # self.adj_adversary = perturbed_edge_index
         # return perturbed_edge_index, flipped_edges
 

@@ -16,6 +16,7 @@ from typing import Optional, Tuple, Union, List, Dict
 from torchtyping import TensorType, patch_typeguard
 from typeguard import typechecked
 import logging
+import inspect
 
 import numpy as np
 import scipy.sparse as sp
@@ -25,8 +26,6 @@ from torch.nn import functional as F
 from torch_sparse import SparseTensor
 
 from gnn_toolbox.registry import registry, get_from_registry
-
-# patch_typeguard()
 
 @typechecked
 class BaseAttack(ABC):
@@ -38,7 +37,7 @@ class BaseAttack(ABC):
     adj : SparseTensor or torch.Tensor
         [n, n] (sparse) adjacency matrix.
     attr : torch.Tensor
-        [n, d] feature/attribute matrix.
+        [n, d] feature/attribute matrix.
     labels : torch.Tensor
         Labels vector of shape [n].
     idx_attack : np.ndarray
@@ -67,73 +66,76 @@ class BaseAttack(ABC):
         loss_type: str = "CE",
         **kwargs,
     ):
-
         self.device = device
-        self.idx_attack = idx_attack
+        self.attr = attr.to(self.device) # unperturbed attributes
+        self.adj = adj.to(self.device) # unperturbed adjacency 
+        
+        self.attr_adversary = self.attr # perturbed attributes
+        self.adj_adversary = self.adj # adjacency matrix that can be perturbed
+        
+        self.idx_attack = idx_attack    
+        self.labels = labels.to(torch.long).to(self.device)
+        self.labels_attack = self.labels[self.idx_attack]
+        
         self.loss_type = loss_type
-
         self.make_undirected = make_undirected
 
         self.attacked_model = deepcopy(model).to(self.device)
         self.attacked_model.eval()
         for params in self.attacked_model.parameters():
             params.requires_grad = False
-        self.eval_model = self.attacked_model
-        self.labels = labels.to(torch.long).to(self.device)
-        self.labels_attack = self.labels[self.idx_attack]
-        self.attr = attr.to(self.device)
-        self.adj = adj.to(self.device)
+            
+        self.eval_model = self.attacked_model     
 
-        self.attr_adversary = self.attr
-        self.adj_adversary = self.adj
 
     @abstractmethod
-    def _attack(self, n_perturbations: int, **kwargs):
+    def attack(self, n_perturbations: int, **kwargs):
         pass
 
-    def attack(self, n_perturbations: int, **kwargs):
-        """
-        Executes the attack on the model updating the attributes
-        self.adj_adversary and self.attr_adversary accordingly.
+    # def attack(self, n_perturbations: int, **kwargs):
+    #     """
+    #     Executes the attack on the model updating the attributes
+    #     self.adj_adversary and self.attr_adversary accordingly.
 
-        Parameters
-        ----------
-        n_perturbations : int
-            number of perturbations (attack budget in terms of node additions/deletions) that constrain the atack
-        """
-        if n_perturbations > 0:
-            return self._attack(n_perturbations, **kwargs)
-        else:
-            self.attr_adversary = self.attr
-            self.adj_adversary = self.adj
-
-    def set_pertubations(
-        self,
-        adj_perturbed: Union[SparseTensor, TensorType],
-        attr_perturbed: TensorType,
-    ):
-        self.adj_adversary = adj_perturbed.to(self.device)
-        self.attr_adversary = attr_perturbed.to(self.device)
+    #     Parameters
+    #     ----------
+    #     n_perturbations : int
+    #         number of perturbations (attack budget in terms of node additions/deletions) that constrain the atack
+    #     """
+    #     if n_perturbations > 0:
+    #         return self._attack(n_perturbations, **kwargs)
+    #     else:
+    #         self.attr_adversary = self.attr
+    #         self.adj_adversary = self.adj
+        
 
     def get_perturbations(self):
         adj_adversary, attr_adversary = self.adj_adversary, self.attr_adversary
 
-        if isinstance(self.adj_adversary, torch.Tensor):
-            # * might need to do to_dense() here since torch_geometric uses torch tensor
-            adj_adversary = SparseTensor.to_torch_sparse_coo_tensor(self.adj_adversary)
+        # if isinstance(self.adj_adversary, torch.Tensor):
+        #     adj_adversary = SparseTensor.to_torch_sparse_coo_tensor(self.adj_adversary)
 
         if isinstance(self.attr_adversary, SparseTensor):
             attr_adversary = self.attr_adversary.to_dense()
-
         return adj_adversary, attr_adversary
 
     def calculate_loss(self, logits, labels):
-        loss = get_from_registry("losses", self.loss_type, registry)
+        loss = get_from_registry("loss", self.loss_type, registry)
         return loss(logits, labels)
+    
+    def from_sparsetensor_to_edge_index(self, adj):
+        if isinstance(adj, SparseTensor):
+            edge_index_rows, edge_index_cols, edge_weight = adj.coo()
+            edge_index = torch.stack([edge_index_rows, edge_index_cols], dim=0).to(self.device)
+            return edge_index, edge_weight.to(self.device)
+        return None, None
+    
+    def from_edge_index_to_sparsetensor(self, edge_index, edge_weight):
+        return SparseTensor(row=edge_index[0], col=edge_index[1], value=edge_weight).to(self.device)
 
-
+    
 @typechecked
-class SparseAttack(BaseAttack):
+class GlobalAttack(BaseAttack):
     """
     Base class for all sparse attacks.
     Just like the base attack class but automatically casting the adjacency to sparse format.
@@ -141,29 +143,19 @@ class SparseAttack(BaseAttack):
 
     def __init__(
         self,
-        adj: Union[SparseTensor, TensorType, sp.csr_matrix],
+        adj: SparseTensor,
         make_undirected: bool = True,
         **kwargs,
     ):
 
-        if isinstance(adj, torch.Tensor):
-            adj = SparseTensor.from_dense(adj)
-        elif isinstance(adj, sp.csr_matrix):
-            adj = SparseTensor.from_scipy(adj)
-
         super().__init__(adj, make_undirected=make_undirected, **kwargs)
 
-        edge_index_rows, edge_index_cols, edge_weight = adj.coo()
-        self.edge_index = torch.stack([edge_index_rows, edge_index_cols], dim=0).to(
-            self.device
-        )
-        self.edge_weight = edge_weight.to(self.device)
         self.n = adj.size(0)
         self.d = self.attr.shape[1]
-
+        self.num_nodes = self.attr.shape[0]
 
 @typechecked
-class SparseLocalAttack(SparseAttack):
+class LocalAttack(GlobalAttack):
     """
     Base class for all local sparse attacks
     """
@@ -180,18 +172,23 @@ class SparseLocalAttack(SparseAttack):
         self,
         model,
         node_idx: int,
-        perturbed_graph: SparseTensor = None,
+        perturbed_graph: Union[SparseTensor, None] = None,
     ):
         if perturbed_graph is None:
             perturbed_graph = self.adj
-        return model(self.attr.to(self.device), perturbed_graph.to(self.device))[
-            node_idx : node_idx + 1
-        ]
+    
+        sig = inspect.signature(model.forward)
+        if "edge_weight" in sig.parameters or "edge_attr" in sig.parameters:
+            edge_index, edge_weight = self.from_sparsetensor_to_edge_index(perturbed_graph)
+            if edge_index is not None and edge_weight is not None:
+                return model(self.attr, edge_index, edge_weight)[node_idx : node_idx + 1]
+            raise ValueError("Model requires edge_weight or edge_attr but none provided")
+        return model(self.attr.to(self.device), perturbed_graph.to(self.device))[node_idx : node_idx + 1]
 
     def get_surrogate_logits(
         self,
         node_idx: int,
-        perturbed_graph: SparseTensor = None,
+        perturbed_graph: Union[SparseTensor, None] = None,
     ) -> torch.Tensor:
         return self.get_logits(self.attacked_model, node_idx, perturbed_graph)
 
@@ -199,16 +196,16 @@ class SparseLocalAttack(SparseAttack):
         self,
         node_idx: int,
         perturbed_graph: Optional[
-            Union[SparseTensor, Tuple[TensorType[2, "nnz"], TensorType["nnz"]]]
+            Union[SparseTensor, Tuple[TensorType, TensorType], None]
         ] = None,
     ) -> torch.Tensor:
         return self.get_logits(self.eval_model, node_idx, perturbed_graph)
 
     @torch.no_grad()
-    def evaluate_local(self, node_idx: int):
+    def evaluate_node(self, node_idx: int):
         self.attacked_model.eval()
 
-        if torch.cuda.is_available():
+        if self.device == "cuda":
             torch.cuda.empty_cache()
             torch.cuda.synchronize()
             memory = torch.cuda.memory_allocated() / (1024**3)
@@ -218,7 +215,7 @@ class SparseLocalAttack(SparseAttack):
 
         initial_logits = self.get_eval_logits(node_idx)
 
-        if torch.cuda.is_available():
+        if self.device == "cuda":
             torch.cuda.empty_cache()
             torch.cuda.synchronize()
             memory = torch.cuda.memory_allocated() / (1024**3)
@@ -229,6 +226,26 @@ class SparseLocalAttack(SparseAttack):
         logits = self.get_eval_logits(node_idx, self.adj_adversary)
         return logits, initial_logits
 
+    @staticmethod
+    def classification_statistics(
+        logits: TensorType, label: TensorType
+    ) -> Dict[str, float]:
+        logits, label = F.log_softmax(logits.cpu(), dim=-1), label.cpu()
+        logits = logits[0]
+        logit_target = logits[label].item()
+        sorted = logits.argsort()
+        logit_best_non_target = (logits[sorted[sorted != label][-1]]).item()
+        confidence_target = np.exp(logit_target)
+        confidence_non_target = np.exp(logit_best_non_target)
+        margin = confidence_target - confidence_non_target
+        return {
+            "logit_target": logit_target,
+            "logit_best_non_target": logit_best_non_target,
+            "confidence_target": confidence_target,
+            "confidence_non_target": confidence_non_target,
+            "margin": margin,
+        }
+    
     def set_eval_model(self, model):
         self.eval_model = model.to(self.device)
 
@@ -292,40 +309,50 @@ class SparseLocalAttack(SparseAttack):
         :rtype: (Tensor)
         """
         prob = F.softmax(prediction, dim=-1)
-        margin_ = SparseLocalAttack._margin_loss(prob, labels, idx_mask)
+        margin_ = LocalAttack._margin_loss(prob, labels, idx_mask)
         return margin_.mean()
 
     def adj_adversary_for_poisoning(self):
         return self.adj_adversary
 
+# from torch_geometric.datasets import Planetoid
+# from torch_geometric.transforms import ToSparseTensor
+# from torch_geometric.utils import dense_to_sparse
+# class DenseAttack(BaseAttack):
+#     @typechecked
+#     def __init__(
+#         self,
+#         adj: Union[SparseTensor, TensorType],
+#         attr: TensorType,
+#         labels: TensorType,
+#         idx_attack: np.ndarray,
+#         model,
+#         device: Union[str, int, torch.device],
+#         make_undirected: bool = True,
+#         loss_type: str = "CE",
+#         **kwargs,
+#     ):
+#         if isinstance(adj, SparseTensor):
+#             adj = adj.to_dense()
+#             # adj = dense_to_sparse(adj)
+#             # cora = Planetoid(root='datasets', name='Cora',transform=ToSparseTensor(remove_edge_index=False))
+#             # data = cora[0]
+#             # row, col, edge_attr = data.adj_t.t().coo()
+#             # edge_index = torch.stack([row, col], dim=0)
+#             # adj = edge_index
+#             # adj = data.adj_t.to_dense()
+#             # ad
 
-class DenseAttack(BaseAttack):
-    @typechecked
-    def __init__(
-        self,
-        adj: Union[SparseTensor, TensorType],
-        attr: TensorType,
-        labels: TensorType,
-        idx_attack: np.ndarray,
-        model,
-        device: Union[str, int, torch.device],
-        make_undirected: bool = True,
-        loss_type: str = "CE",
-        **kwargs,
-    ):
-        if isinstance(adj, SparseTensor):
-            adj = adj.to_dense()
+#         super().__init__(
+#             adj,
+#             attr,
+#             labels,
+#             idx_attack,
+#             model,
+#             device,
+#             loss_type=loss_type,
+#             make_undirected=make_undirected,
+#             **kwargs,
+#         )
 
-        super().__init__(
-            adj,
-            attr,
-            labels,
-            idx_attack,
-            model,
-            device,
-            loss_type=loss_type,
-            make_undirected=make_undirected,
-            **kwargs,
-        )
-
-        self.n = adj.shape[0]
+#         self.n = adj.shape[0]

@@ -1,11 +1,11 @@
 import torch
 from torch_sparse import SparseTensor
 
-from gnn_toolbox.custom_modules.attacks.base_attack import SparseLocalAttack
+from gnn_toolbox.custom_components.attacks.base_attack import LocalAttack
 from gnn_toolbox.registry import register_local_attack
 
-@register_local_attack("localDICE")
-class LocalDICE(SparseLocalAttack):
+@register_local_attack("LocalDICE")
+class LocalDICE(LocalAttack):
     """A Local version of the DICE Attack
 
     Parameters
@@ -22,7 +22,7 @@ class LocalDICE(SparseLocalAttack):
 
         self.add_ratio = add_ratio
 
-    def _attack(self,
+    def attack(self,
                 n_perturbations: int, node_idx: int,
                 **kwargs):
 

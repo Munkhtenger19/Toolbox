@@ -2,7 +2,7 @@ import pytorch_lightning as L
 from torch_geometric.data.lightning.datamodule import LightningDataModule
 from customize.util import get_ckpt_dir
 from gnn_toolbox.old.config_def import cfg
-from gnn_toolbox.custom_modules.models.model import BaseModel
+from gnn_toolbox.custom_components.models.model import BaseModel
 from custom_modules.loader import create_loader
 from logger import LoggerCallback
 

@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 from rgnn_at_scale.helper.utils import grad_with_checkpoint, to_symmetric
 from rgnn_at_scale.attacks.base_attack import Attack, SparseLocalAttack
-from gnn_toolbox.custom_modules import utils
+from gnn_toolbox.custom_components import utils
 
 
 class LocalPRBCD(SparseLocalAttack):

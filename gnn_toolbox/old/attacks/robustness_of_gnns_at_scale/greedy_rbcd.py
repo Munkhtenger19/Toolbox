@@ -3,7 +3,7 @@ import torch
 import torch_sparse
 from torch_sparse import SparseTensor
 
-from gnn_toolbox.custom_modules import utils
+from gnn_toolbox.custom_components import utils
 from gnn_toolbox.attacks.robustness_of_gnns_at_scale.prbcd import PRBCD
 
 

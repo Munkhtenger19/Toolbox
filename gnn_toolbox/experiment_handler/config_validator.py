@@ -91,8 +91,8 @@ class Attack(BaseModel):
     epsilon: Union[List[Union[PositiveInt, PositiveFloat]], PositiveInt, PositiveFloat]
     nodes: Optional[List[NonNegativeInt]] = None
     min_node_degree: Optional[PositiveInt] = None
-    topk: Optional[PositiveInt] = None
-    
+    nodes_topk: Optional[PositiveInt] = None
+    params: Optional[Dict[str, PARAMS_TYPE]] = {}
     @model_validator(mode='after')
     def validate_scope(self):
         if self.scope == 'local':

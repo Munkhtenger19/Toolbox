@@ -11,7 +11,7 @@ import torch_sparse
 from torch_sparse import SparseTensor
 
 # from rgnn_at_scale.models import MODEL_TYPE
-from gnn_toolbox.custom_modules import utils
+from gnn_toolbox.custom_components import utils
 from gnn_toolbox.attacks.base_attack import Attack, SparseAttack
 
 
