@@ -16,6 +16,8 @@ from gnn_toolbox.custom_components.attacks.base_attack import GlobalAttack
 from gnn_toolbox.registry import register_global_attack
 # (predictions, labels, ids/mask) -> Tensor with one element
 LOSS_TYPE = Callable[[Tensor, Tensor, Optional[Tensor]], Tensor]
+from torch_geometric.seed import seed_everything
+
 
 @register_global_attack("PRBCD2")
 class PRBCDAttack(GlobalAttack):
@@ -95,7 +97,7 @@ class PRBCDAttack(GlobalAttack):
 
     def __init__(
         self,
-        block_size: int = 250_000,
+        block_size: int = 200_000,
         epochs: int = 125,
         epochs_resampling: int = 100,
         loss_type: Optional[Union[str, LOSS_TYPE]] = 'prob_margin',
@@ -105,6 +107,7 @@ class PRBCDAttack(GlobalAttack):
         log: bool = True,
         **kwargs,
     ):
+        
         super().__init__(**kwargs)
 
         self.block_size = block_size
@@ -134,6 +137,7 @@ class PRBCDAttack(GlobalAttack):
         self.coeffs.update(kwargs)
 
     def attack(self, n_perturbations: int, **kwargs):
+        
         row, col, edge_attr = self.adj_adversary.coo()
         edge_index = torch.stack([row, col], dim=0)
         self.attacker(self.attr, edge_index, self.labels, n_perturbations, **kwargs)
@@ -165,6 +169,7 @@ class PRBCDAttack(GlobalAttack):
 
         :rtype: (:class:`torch.Tensor`, :class:`torch.Tensor`)
         """
+        seed_everything(42)
         self.attacked_model.eval()
 
         self.device = x.device
@@ -201,7 +206,7 @@ class PRBCDAttack(GlobalAttack):
         edge_weight = torch.ones(perturbed_edge_index.size(1), device=self.device)
         # adj = sp.csr_matrix((edge_weight.cpu(), perturbed_edge_index.cpu()), (self.num_nodes, self.num_nodes))
         # self.adj_adversary = torch_sparse.SparseTensor.from_scipy(adj).coalesce().to(self.device)
-        self.adj_adversary = torch_sparse.SparseTensor(row = perturbed_edge_index[0].to(self.device), col = perturbed_edge_index[1].to(self.device), value = edge_weight)
+        self.adj_adversary = torch_sparse.SparseTensor(row = perturbed_edge_index[0], col = perturbed_edge_index[1], value = edge_weight).t().to(self.device)
         # self.adj_adversary = perturbed_edge_index
         # return perturbed_edge_index, flipped_edges
 
@@ -655,7 +660,7 @@ class PRBCDAttack(GlobalAttack):
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}()'
 
-
+@register_global_attack("GRBCD")
 class GRBCDAttack(PRBCDAttack):
     r"""The Greedy Randomized Block Coordinate Descent (GRBCD) adversarial
     attack from the `Robustness of Graph Neural Networks at Scale
@@ -697,16 +702,15 @@ class GRBCDAttack(PRBCDAttack):
 
     def __init__(
         self,
-        model: torch.nn.Module,
-        block_size: int,
+        block_size: int = 200_000,
         epochs: int = 125,
         loss: Optional[Union[str, LOSS_TYPE]] = 'masked',
-        is_undirected: bool = True,
+        make_undirected: bool = True,
         log: bool = True,
         **kwargs,
     ):
-        super().__init__(model, block_size, epochs, loss_type=loss,
-                         make_undirected=is_undirected, log=log, **kwargs)
+        super().__init__(block_size, epochs, loss_type=loss,
+                         make_undirected=make_undirected, log=log, **kwargs)
 
     @torch.no_grad()
     def _prepare(self, budget: int) -> List[int]:

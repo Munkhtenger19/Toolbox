@@ -56,7 +56,7 @@ class PRBCD(GlobalAttack):
 
         self.lr_factor = lr_factor * max(math.log2(self.n_possible_edges / self.block_size), 1.)
 
-    def _attack(self, n_perturbations, **kwargs):
+    def attack(self, n_perturbations, **kwargs):
         """Perform attack (`n_perturbations` is increasing as it was a greedy attack).
 
         Parameters
@@ -80,7 +80,8 @@ class PRBCD(GlobalAttack):
 
         # Accuracy and attack statistics before the attach even started
         with torch.no_grad():
-            logits = self._get_logits(self.attr, self.edge_index, self.edge_weight)
+            edge_index, edge_weight = self.from_sparsetensor_to_edge_index(self.adj)
+            logits = self._get_logits(self.attr, edge_index, edge_weight)
             loss = self.calculate_loss(logits[self.idx_attack], self.labels[self.idx_attack])
             accuracy = utils.accuracy(logits, self.labels, self.idx_attack)
 

@@ -24,8 +24,8 @@ class DICE(GlobalAttack):
         super().__init__(**kwargs)
 
         assert self.make_undirected, 'Attack only implemented for undirected graphs'
-
-        self.edge_weight = self.edge_weight.float()
+        self.edge_index, self.edge_weight = self.from_sparsetensor_to_edge_index(self.adj)
+        # self.edge_weight = self.edge_weight.float()
 
         # Create Symmetric Adjacency Matrix
         adj_symmetric_index, adj_symmetric_weights = utils.to_symmetric(self.edge_index, self.edge_weight, self.n)

@@ -128,7 +128,7 @@ class BaseAttack(ABC):
             edge_index_rows, edge_index_cols, edge_weight = adj.coo()
             edge_index = torch.stack([edge_index_rows, edge_index_cols], dim=0).to(self.device)
             return edge_index, edge_weight.to(self.device)
-        return None, None
+        raise ValueError("Adjacency matrix is not a SparseTensor from torch_sparse")
     
     def from_edge_index_to_sparsetensor(self, edge_index, edge_weight):
         return SparseTensor(row=edge_index[0], col=edge_index[1], value=edge_weight).to(self.device)

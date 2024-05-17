@@ -69,9 +69,17 @@ def run_experiment(experiment, experiment_dir, artifact_manager):
                 logging.exception(e)
                 logging.error(f"Global evasion adversarial attack {experiment['attack']['name']} failed to attack the model {experiment['model']['name']}")
                 return
-            
+                    
+                    # correct one, with no t() 
             logits, accuracy = evaluate_model(model=model, attr=pert_attr, adj=pert_adj, labels=labels, idx_test=split['test'], device=device)
-            
+            logits0, accuracy0 = evaluate_model(model=model, attr=pert_attr, adj=pert_adj.t(), labels=labels, idx_test=split['test'], device=device)
+            logits2, accuracy2 = evaluate_model(model=model, attr=attr, adj=adj.t(), labels=labels, idx_test=split['test'], device=device)
+            # correct one, with no t()
+            logits3, accuracy3 = evaluate_model(model=model, attr=attr, adj=adj, labels=labels, idx_test=split['test'], device=device)
+            logging.info(f'HEREE, {accuracy}')
+            logging.info(f'HEREE0, {accuracy0}')
+            logging.info(f'HEREE2, {accuracy2}')
+            logging.info(f'HEREE3, {accuracy3}')
             perturbed_result ={
                 'logits': logits.cpu().numpy().tolist(),
                 'accuracy': accuracy,

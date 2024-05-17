@@ -11,9 +11,9 @@ experiment_templates:
         params:
           hidden_channels: 64
     dataset:
-      name: Cora  #ogbn-arxiv
+      name: Cora # ogbn-arxiv 
       root: ./datasets
-      make_undirected: False
+      make_undirected: false
       # transforms:
       #   - name: NormalizeFeatures
         # - name: Constant
@@ -33,15 +33,17 @@ experiment_templates:
       #   name: PGD
       #   type: poison
       #   epsilon: [0.5]
-      # - scope: global
-      #   name: DICE, FGSM, PGD, PRBCD, GreedyRBCD]
+      - scope: global
+        name: [PRBCD2]
+        type: evasion
+        epsilon: [0.6]
+        # params:
+        #   block_size: 100000
+      # - scope: local
+      #   name: [LocalPRBCD, LocalDICE]
       #   type: [poison, evasion]
-      #   epsilon: [0.5]
-      - scope: local
-        name: [LocalPRBCD, LocalDICE]
-        type: poison
-        epsilon: [0.3]
-        nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+      #   epsilon: [0.3]
+      #   nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
       # - scope: local
       #   name: Nettack
       #   type: evasion

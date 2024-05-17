@@ -45,7 +45,7 @@ class GreedyRBCD(PRBCD):
         # self.edge_weight = torch.ones_like(self.edge_weight)
         assert self.edge_index.size(1) == self.edge_weight.size(0)
 
-    def _attack(self, n_perturbations: int):
+    def attack(self, n_perturbations: int):
         """Perform attack
 
         Parameters
