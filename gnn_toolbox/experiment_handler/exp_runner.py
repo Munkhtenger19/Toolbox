@@ -54,7 +54,7 @@ def run_experiment(experiment, experiment_dir, artifact_manager):
                 try:
                     adversarial_attack.attack(n_perturbations)
                     pert_adj, pert_attr = adversarial_attack.get_perturbations()
-                    perturbed_result = train_and_evaluate(model, pert_attr, pert_adj, attr, adj, labels, split, device, experiment, artifact_manager, is_unattacked_model=False)
+                    perturbed_result = train_and_evaluate(model, pert_attr, pert_adj, attr, adj, labels, split, device, experiment, artifact_manager, is_unattacked_model=False, untrained_model_state_dict = untrained_model_state_dict)
                 except Exception as e:
                     logging.exception(e)
                     logging.error(f"Global poisoning adversarial attack {experiment['attack']['name']} failed to attack the model {experiment['model']['name']}")
@@ -117,7 +117,7 @@ def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels
     labels = labels.to(device)
     
     if untrained_model_state_dict is not None:
-        model.load(untrained_model_state_dict)
+        model.load_state_dict(untrained_model_state_dict)
     for module in model.modules():
         if hasattr(module, 'reset_parameters'):
             module.reset_parameters()

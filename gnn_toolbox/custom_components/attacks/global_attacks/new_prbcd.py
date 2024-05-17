@@ -138,7 +138,7 @@ class PRBCDAttack(GlobalAttack):
 
     def attack(self, n_perturbations: int, **kwargs):
         
-        row, col, edge_attr = self.adj_adversary.coo()
+        row, col, edge_attr = self.adj.coo()
         edge_index = torch.stack([row, col], dim=0)
         self.attacker(self.attr, edge_index, self.labels, n_perturbations, **kwargs)
     def attacker(
@@ -202,13 +202,10 @@ class PRBCDAttack(GlobalAttack):
         assert flipped_edges.size(1) <= budget, (
             f'# perturbed edges {flipped_edges.size(1)} '
             f'exceeds budget {budget}')
-        # self.edge_index_adversary = perturbed_edge_index
+
         edge_weight = torch.ones(perturbed_edge_index.size(1), device=self.device)
-        # adj = sp.csr_matrix((edge_weight.cpu(), perturbed_edge_index.cpu()), (self.num_nodes, self.num_nodes))
-        # self.adj_adversary = torch_sparse.SparseTensor.from_scipy(adj).coalesce().to(self.device)
         self.adj_adversary = torch_sparse.SparseTensor(row = perturbed_edge_index[0], col = perturbed_edge_index[1], value = edge_weight).t().to(self.device)
-        # self.adj_adversary = perturbed_edge_index
-        # return perturbed_edge_index, flipped_edges
+
 
     def _prepare(self, budget: int) -> Iterable[int]:
         """Prepare attack."""

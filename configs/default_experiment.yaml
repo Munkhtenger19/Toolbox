@@ -13,7 +13,7 @@ experiment_templates:
     dataset:
       name: Cora # ogbn-arxiv 
       root: ./datasets
-      make_undirected: false
+      make_undirected: true
       # transforms:
       #   - name: NormalizeFeatures
         # - name: Constant
@@ -34,7 +34,7 @@ experiment_templates:
       #   type: poison
       #   epsilon: [0.5]
       - scope: global
-        name: [PRBCD2]
+        name: [DICE]
         type: evasion
         epsilon: [0.6]
         # params:

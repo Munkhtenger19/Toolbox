@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from pytorch_lightning import LightningModule
 
-from gnn_toolbox.old.config_def import cfg
+# from gnn_toolbox.old.config_def import cfg
 from gnn_toolbox.custom_components.optimizers.optimizers import register_optimizer
 from gnn_toolbox.registry import registry
 
@@ -56,35 +56,35 @@ class BaseModel(LightningModule):
         return self._shared_step(batch, split="test")
 
 
-def compute_loss(pred, true):
-    """Compute loss and prediction score.
+# def compute_loss(pred, true):
+#     """Compute loss and prediction score.
 
-    Args:
-        pred (torch.tensor): Unnormalized prediction
-        true (torch.tensor): Grou
+#     Args:
+#         pred (torch.tensor): Unnormalized prediction
+#         true (torch.tensor): Grou
 
-    Returns: Loss, normalized prediction score
+#     Returns: Loss, normalized prediction score
 
-    """
-    bce_loss = torch.nn.BCEWithLogitsLoss(reduction=cfg.model.size_average)
-    mse_loss = torch.nn.MSELoss(reduction=cfg.model.size_average)
+#     """
+#     bce_loss = torch.nn.BCEWithLogitsLoss(reduction=cfg.model.size_average)
+#     mse_loss = torch.nn.MSELoss(reduction=cfg.model.size_average)
 
-    # default manipulation for pred and true
-    # can be skipped if special loss computation is needed
-    pred = pred.squeeze(-1) if pred.ndim > 1 else pred
-    true = true.squeeze(-1) if true.ndim > 1 else true
+#     # default manipulation for pred and true
+#     # can be skipped if special loss computation is needed
+#     pred = pred.squeeze(-1) if pred.ndim > 1 else pred
+#     true = true.squeeze(-1) if true.ndim > 1 else true
 
-    if cfg.model.loss_fun == 'cross_entropy':
-        # multiclass
-        if pred.ndim > 1 and true.ndim == 1:
-            pred = F.log_softmax(pred, dim=-1)
-            return F.nll_loss(pred, true), pred
-        # binary or multilabel
-        else:
-            true = true.float()
-            return bce_loss(pred, true), torch.sigmoid(pred)
-    elif cfg.model.loss_fun == 'mse':
-        true = true.float()
-        return mse_loss(pred, true), pred
-    else:
-        raise ValueError(f"Loss function '{cfg.model.loss_fun}' not supported")
+#     if cfg.model.loss_fun == 'cross_entropy':
+#         # multiclass
+#         if pred.ndim > 1 and true.ndim == 1:
+#             pred = F.log_softmax(pred, dim=-1)
+#             return F.nll_loss(pred, true), pred
+#         # binary or multilabel
+#         else:
+#             true = true.float()
+#             return bce_loss(pred, true), torch.sigmoid(pred)
+#     elif cfg.model.loss_fun == 'mse':
+#         true = true.float()
+#         return mse_loss(pred, true), pred
+#     else:
+#         raise ValueError(f"Loss function '{cfg.model.loss_fun}' not supported")

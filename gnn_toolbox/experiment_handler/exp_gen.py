@@ -12,16 +12,16 @@ CONFIG_VALUES = ['output_dir',
                  'experiment_templates',
                  ]
 
-class ConfigManager:
-    _global_config = {}
+# class ConfigManager:
+#     _global_config = {}
 
-    @staticmethod
-    def update_config(new_config):
-        ConfigManager._global_config = new_config
+#     @staticmethod
+#     def update_config(new_config):
+#         ConfigManager._global_config = new_config
 
-    @staticmethod
-    def get_config():
-        return ConfigManager._global_config
+#     @staticmethod
+#     def get_config():
+#         return ConfigManager._global_config
 
 class InputError(SystemExit):
     """Parent class for input errors that don't print a stack trace."""
@@ -37,7 +37,7 @@ class ConfigError(InputError):
 def flatten(dictionary: dict, parent_key: str = '', sep: str = '.'):
     """
     Flatten a nested dictionary, e.g. {'a':{'b': 2}, 'c': 3} becomes {'a.b':2, 'c':3}.
-    From https://stackoverflow.com/questions/6027558/flatten-nested-dictionaries-compressing-keys
+    Adapted from https://stackoverflow.com/questions/6027558/flatten-nested-dictionaries-compressing-keys
 
     Parameters
     ----------

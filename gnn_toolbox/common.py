@@ -70,14 +70,6 @@ def train(
     # trace_acc_val = []
     # trace_acc_test = []
     results = []
-    # optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-    # from torch_geometric.datasets import Planetoid
-    # from torch_geometric.transforms import ToSparseTensor
-
-    # cora = Planetoid(
-    #     root="/datasets", name="Cora", transform=ToSparseTensor(remove_edge_index=False)
-    # )
-    # qw = cora[0]
     best_loss = np.inf
     edge_index_rows, edge_index_cols, edge_weight = adj.coo()
     edge_index = torch.stack([edge_index_rows, edge_index_cols], dim=0)
@@ -89,11 +81,6 @@ def train(
         optimizer.zero_grad()
 
         logits = get_logits(model, attr, edge_index, edge_weight)
-        # logits = model(
-        #     qw.x.to("cuda"),
-        #     qw.edge_index.to("cuda"),
-        #     torch.ones_like(qw.edge_index[0], dtype=torch.float32).to("cuda"),
-        # )
 
         loss_train = loss(logits[idx_train], labels[idx_train])
         loss_val = loss(logits[idx_val], labels[idx_val])
