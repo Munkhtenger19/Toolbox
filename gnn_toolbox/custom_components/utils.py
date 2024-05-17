@@ -38,20 +38,12 @@ def grad_with_checkpoint(outputs: Union[torch.Tensor, Sequence[torch.Tensor]],
     inputs = (inputs,) if isinstance(inputs, torch.Tensor) else tuple(inputs)
 
     for input in inputs:
-        # input.retain_grad()
         if not input.is_leaf:
             input.retain_grad()
     
     torch.autograd.backward(outputs)
 
     grad_outputs = []
-    # for input in inputs:
-    #     if input.grad is not None:
-    #         grad_outputs.append(input.grad.clone())
-    #         input.grad.zero_()
-    #     else:
-    #         # Append zeros in the same shape as the input if no gradient was computed
-    #         grad_outputs.append(torch.ones_like(input))
             
     for input in inputs:
         grad_outputs.append(input.grad.clone())

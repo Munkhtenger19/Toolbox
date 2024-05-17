@@ -40,9 +40,9 @@ class ArtifactManager:
             with result_path.open('w') as file:
                 json.dump(result, file, indent=4)
         except Exception as e:
-            logging.error(f"Failed to save model or results: {e}")
+            logging.error(f"Failed to save model or results to {model_dir}: {e}")
         else:
-            logging.info(f'Saved the model {model_suffix} at {model_dir}')
+            logging.info(f'Saved the model {model_suffix} to {model_dir} for caching')
 
     def model_exists(self, params, is_unattacked_model):
         """ Check if a model with the given parameters already exists. """
@@ -51,9 +51,6 @@ class ArtifactManager:
         hash_id = self.hash_parameters(params)
         params_dir = self.cache_directory / f"{hash_id}"
         if self.folder_exists(params_dir):
-            # params_path = params_dir / 'params.json'
-            # with params_path.open('r') as file:
-            #     saved_params = json.load(file)
             if is_unattacked_model:
                 model_name = f"{params['model']['name']}_{params['dataset']['name']}.pt"
                 model_path = params_dir / model_name

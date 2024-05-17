@@ -21,7 +21,7 @@ def create_transforms(configs):
         transform_cls = get_from_registry("transform", name, registry)
         if transform_cls is None:
             raise ValueError(f"Transform '{name}' not found in the registry.")
-        logging.info(f"Creating transform '{name}' with parameters: {params}")
+        logging.debug(f"For dataset, creating transform '{name}' with parameters: {params}")
         transforms.append(transform_cls(**params))
 
     return Compose(transforms)

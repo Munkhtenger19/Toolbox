@@ -22,9 +22,9 @@ class LogExperiment:
             file_path = self.log_to / "experiment_config.json"
             with open(file_path, 'w') as f:
                 json.dump(self.experiment_config, f, indent=4)
-            logging.info("Experiment configuration logged successfully.")
+            logging.info(f"Experiment configuration logged to {file_path} successfully.")
         except Exception as e:
-            logging.error(f"Failed to log experiment configuration: {e}")
+            logging.error(f"Failed to log experiment configuration to {file_path}: {e}")
 
     def log_results(self):
         try:
@@ -35,9 +35,9 @@ class LogExperiment:
                         json.dump(value, f, indent=2)
                     if self.csv_save and (key=='clean_result' or self.perturbed_result2csv):
                         self.save_to_csv(key, value)
-            logging.info("Results logged successfully.")
+            logging.info(f"Results logged successfully to {self.log_to}.")
         except Exception as e:
-            logging.error(f"Failed to log results: {e}")
+            logging.error(f"Failed to log results to {self.log_to}: {e}")
             
     def save_to_csv(self, key, value):
         try:
@@ -47,7 +47,7 @@ class LogExperiment:
                 writer.writerow(value[0].keys())
                 for result in value:
                     writer.writerow(result.values())
-            logging.info(f"{key} saved to CSV successfully.")
+            logging.info(f"{key} saved to CSV at {file_path} successfully.")
         except Exception as e:
-            logging.error(f"Failed to save {key} to CSV: {e}")
+            logging.error(f"Failed to save {key} to CSV at {file_path}: {e}")
             
