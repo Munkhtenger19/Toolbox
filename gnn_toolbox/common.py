@@ -73,9 +73,6 @@ def train(
     best_loss = np.inf
     edge_index_rows, edge_index_cols, edge_weight = adj.coo()
     edge_index = torch.stack([edge_index_rows, edge_index_cols], dim=0)
-    # edge_weight2 = edge_weight2.float()
-    # attr = attr.float()
-    # .to(self.device)
     model.train()
     for epoch in tqdm(range(max_epochs), desc="Training"):
         optimizer.zero_grad()
