@@ -1,9 +1,9 @@
-output_dir: ./output6
+output_dir: ./output8
 # resume_output: False
 # csv_save: True
 # esd: True
 experiment_templates:
-  - name: My experiment
+  - name: Local attack_3
     seed: [0]
     device: cuda
     model:
@@ -11,20 +11,21 @@ experiment_templates:
         params:
           hidden_channels: 64
     dataset:
-      name: Cora # ogbn-arxiv 
+      name: [QM9] # ogbn-arxiv 
       root: ./datasets
       make_undirected: true
       # transforms:
+      #   - name: ToUndirected
       #   - name: NormalizeFeatures
         # - name: Constant
         #   params:
         #     value: 0.8
 
     attack:
-      # - scope: global
-      #   name: DICE
-      #   type: poison
-      #   epsilon: [0.5]
+      - scope: 'global'
+        name: DICE
+        type: evasion
+        epsilon: [0.5]
       # - scope: global
       #   name: FGSM
       #   type: poison
@@ -33,10 +34,14 @@ experiment_templates:
       #   name: PGD
       #   type: poison
       #   epsilon: [0.5]
-      - scope: global
-        name: [DICE]
-        type: evasion
-        epsilon: [0.6]
+
+      # - scope: local
+      #   name: [LocalDICE]
+      #   type: evasion
+      #   epsilon: [0.6]
+      #   nodes_topk: 10
+      #   min_node_degree: 2
+
         # params:
         #   block_size: 100000
       # - scope: local

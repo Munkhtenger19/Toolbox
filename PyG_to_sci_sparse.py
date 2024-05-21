@@ -305,7 +305,7 @@ cora = Planetoid(name='cora', root='./datasets')
 def accuracy(pred, y, mask):
     return (pred.argmax(-1)[mask] == y[mask]).float().mean()
 # print(data9.is_directed())
-dataset2= PygNodePropPredDataset(name='ogbn-arxiv', root='./datasets', transform=T.ToSparseTensor(remove_edge_index=False))
+# dataset2= PygNodePropPredDataset(name='ogbn-arxiv', root='./datasets', transform=T.ToSparseTensor(remove_edge_index=False))
 dataset1= Planetoid(name = 'cora', root = './datasets')
 data = dataset1[0]
 train=data.train_mask.nonzero().squeeze()
@@ -313,46 +313,52 @@ model1= GCN(in_channels=dataset1.num_features, out_channels=dataset1.num_classes
 logits = model1(data.x, data.edge_index)
 # print(accuracy(logits, data.y, train))
 # print(accuracy(logits, data.y, data.train_mask))
-# from torch_geometric.datasets import PPI
-# dataset1 = PPI(root='./datasets', transform=T.ToSparseTensor(remove_edge_index=False))
+from torch_geometric.datasets import PPI, KarateClub
+dataset9 = QM9(root = './datasets', transform=T.ToSparseTensor(remove_edge_index=False))
+data12 = dataset9[0]
+print(data12)
+
 # print('pygnodepred', dataset1)
 # we = dataset1[0]
 # print('we', we)
 
 # dataset2= Planetoid(name = 'citeseer', root = './datasets')
 # dataset2= QM9(root = './datasets')
-data2 = dataset2[0]
-# train_mask=data2.train_mask.nonzero().squeeze()
-# attr, adj, labels, splits, n = prep_graph(dataset2, make_undirected=False)
-# print()
-from torch_geometric.utils import to_undirected, is_undirected
-print('is_undirected', is_undirected(data2.edge_index, num_nodes=data2.num_nodes))
-adj = SparseTensor(row=data2.edge_index[0], col=data2.edge_index[1], value=data2.edge_attr).to('cuda')
-adj2 = SparseTensor(row=data2.edge_index[0], col=data2.edge_index[1], value=data2.edge_weight if data2.edge_weight is not None else torch.ones(data2.edge_index.size(1))).to('cuda')
-print('num_edge',adj.nnz())
-print('what', adj)
-print('what2', adj.t())
+# data2 = dataset2[0]
+# # train_mask=data2.train_mask.nonzero().squeeze()
+# # attr, adj, labels, splits, n = prep_graph(dataset2, make_undirected=False)
+# # print()
+# from torch_geometric.utils import to_undirected, is_undirected
+# print('is_undirected', is_undirected(data2.edge_index, num_nodes=data2.num_nodes))
+# adj = SparseTensor(row=data2.edge_index[0], col=data2.edge_index[1], value=data2.edge_attr).to('cuda')
+# adj2 = SparseTensor(row=data2.edge_index[0], col=data2.edge_index[1], value=data2.edge_weight if data2.edge_weight is not None else torch.ones(data2.edge_index.size(1))).to('cuda')
+# print('num_edge',adj.nnz())
+# print('what', adj)
+# print('what2', adj.t())
 
-row, col, edge_attr = adj.t().coo()
-edge_index = torch.stack([row, col], dim=0)
-print('edge_index3', edge_index)
-
-# row, col, edge_attr = adj.coo()
+# row, col, edge_attr = adj.t().coo()
 # edge_index = torch.stack([row, col], dim=0)
-# print('edge_index1', edge_index)
+# print('edge_index3', edge_index)
+# print('edge_attr', edge_attr)
+# # row, col, edge_attr = adj.coo()
+# # edge_index = torch.stack([row, col], dim=0)
+# # print('edge_index1', edge_index)
 
 
-edge_index = to_undirected(data2.edge_index)
-print('x',edge_index.shape[1])
-print('undirected', edge_index)
-edge_index2 = to_undirected(edge_index)
-print('undirected', edge_index)
-print('q',torch.equal(edge_index, edge_index2))
-print(torch.equal(data2.edge_index, edge_index))
-print("numm", data2.num_nodes)
+# edge_index = to_undirected(data2.edge_index)
+# print('x',edge_index.shape[1])
+# print('undirected', edge_index)
+# edge_index2 = to_undirected(edge_index)
+# print('undirected', edge_index)
+# print('q',torch.equal(edge_index, edge_index2))
+# print(torch.equal(data2.edge_index, edge_index))
+# print("numm", data2.num_nodes)
 
-print("numm2", data2.x.shape[0])
-print("numm2", data2.x.size(0))
+# print("numm2", data2.x.shape[0])
+# print("numm2", data2.x.size(0))
+
+# print(T.ToSparseTensor.__name__)
+
 # row, col, edge_attr = adj.coo()
 # cora_edge_index = torch.stack([row, col], dim=0)
 # print('edge_attr', edge_attr)

@@ -13,7 +13,7 @@ def load_and_validate_yaml(yaml_path: str):
         yaml_data = yaml.safe_load(file)
     try:
         config = Config(**yaml_data)
-        logging.info("Given YAML file is valid, generating experiments.")
+        logging.info(f"Given YAML file at {yaml_path} is valid, generating experiments.")
         dict_config = config.model_dump()
         return dict_config
     except Exception as e:
@@ -22,7 +22,7 @@ def load_and_validate_yaml(yaml_path: str):
                 continue
             logging.error(format_error_message(error))
             
-        raise ValueError("Validation error(s) encountered. See logs for details.") from e
+        raise ValueError("Validation error(s) encountered. See logs for details.")
 
 def check_device():
     if torch.cuda.is_available():
@@ -96,8 +96,8 @@ class Attack(BaseModel):
     @model_validator(mode='after')
     def validate_scope(self):
         if self.scope == 'local':
-            if self.nodes is None and (self.min_node_degree is None or self.topk is None):
-                raise ValueError("For local scope, either 'nodes' or both 'min_node_degree' and 'topk' must be provided.")
+            if self.nodes is None and (self.min_node_degree is None or self.nodes_topk is None):
+                raise ValueError("For local scope, either 'nodes' or both 'min_node_degree' and 'nodes_topk' must be provided.")
             check_if_value_registered(self.name, 'local_attack')
         elif self.scope == 'global':
             check_if_value_registered(self.name, 'global_attack')
@@ -119,6 +119,7 @@ class ExperimentTemplate(BaseModel):
 class Config(BaseModel):
     model_config = ConfigDict(extra='forbid')
     output_dir: str = './output'
+    cache_dir: str = './cache'
     resume_output: Optional[bool] = False
     csv_save: Optional[bool] = True
     experiment_templates: List[ExperimentTemplate]

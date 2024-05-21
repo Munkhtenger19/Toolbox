@@ -12,7 +12,7 @@ import torch_sparse
 import scipy.sparse as sp
 
 from torch_geometric.utils import coalesce, to_undirected
-from gnn_toolbox.custom_components.attacks.base_attack import GlobalAttack
+from custom_components.attacks.base_attack import GlobalAttack
 from gnn_toolbox.registry import register_global_attack
 # (predictions, labels, ids/mask) -> Tensor with one element
 LOSS_TYPE = Callable[[Tensor, Tensor, Optional[Tensor]], Tensor]

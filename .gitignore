@@ -5,7 +5,7 @@
 **/mlruns
 **/mlartifacts
 **datasets
-!gnn_toolbox/custom_modules/datasets
+!gnn_toolbox/custom_components/datasets
 *.ckpt
 *.log
 *.json

@@ -1,6 +1,6 @@
 from torch.optim import Adam
 from torch.nn.parameter import Parameter
-from ...registry import register_optimizer
+from gnn_toolbox.registry import register_optimizer
 from typing import Iterator, Dict
 
 @register_optimizer('adam')

@@ -6,11 +6,9 @@ from torch_geometric.nn import GATConv, GCNConv, GCN, GAT
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 # from gnn_toolbox.custom_modules.models.model
 # import gnn_toolbox
-from gnn_toolbox.registry import register_model, registry
+from gnn_toolbox.registry import register_model
 import os
 from typing import Any, Dict, Union
-
-
 
 @register_model("GCN")
 class GCNWH(nn.Module):
@@ -32,7 +30,7 @@ class GCNWH(nn.Module):
 
 
 
-@register_model('gcn2')
+# @register_model('gcn2')
 def GCN_(in_channels, out_channels, hidden_channels):
     return GCN(in_channels, out_channels, hidden_channels)
 
@@ -51,7 +49,7 @@ class GCN2(nn.Module):
         self.conv1.reset_parameters()
         self.conv2.reset_parameters()
 
-    def forward(self, x, edge_index, edge_weight=None, **kwargs):
+    def forward(self, x, edge_index, edge_weight=None):
         # Normalize edge indices only once:
         if not kwargs.get('skip_norm', False):
             edge_index, edge_weight = self.norm(
@@ -115,7 +113,7 @@ class DenseGraphConvolution(nn.Module):
 
 import collections
 from torch_sparse import coalesce, SparseTensor 
-@register_model('DenseGCN')
+# @register_model('DenseGCN')
 class DenseGCN(nn.Module):
     """Dense two layer GCN for the FGSM attack that requires a gradient towards the adjacency matrix.
     """

@@ -19,7 +19,7 @@ from tqdm.auto import tqdm
 from typing import Tuple, Union, Optional, List, Dict, Any
 from torchtyping import TensorType
 from torch_sparse import SparseTensor
-from torch_geometric.utils import to_undirected
+from torch_geometric.utils import to_undirected, is_undirected
 
 def train(
     model,
@@ -274,10 +274,11 @@ def accuracy(
     float
         the Accuracy
     """
+    print(logits.argmax(1)[split_idx] == labels[split_idx].float())
     return (logits.argmax(1)[split_idx] == labels[split_idx]).float().mean().item()
 
 
-def random_splitter(labels, n_per_class=20, seed=None):
+def random_splitter(labels, n_per_class=2, seed=None):
     """
     Randomly split the training data.
 
@@ -304,7 +305,7 @@ def random_splitter(labels, n_per_class=20, seed=None):
     nc = labels.max() + 1
 
     split_train, split_val = [], []
-    for label in range(nc):
+    for label in range(int(nc)):
         perm = np.random.permutation((labels == label).nonzero()[0])
         split_train.append(perm[:n_per_class])
         split_val.append(perm[n_per_class : 2 * n_per_class])
@@ -318,13 +319,14 @@ def random_splitter(labels, n_per_class=20, seed=None):
         np.arange(len(labels)), np.concatenate((split_train, split_val))
     )
 
-    return dict(split_train, split_val, split_test)
+    return dict(train = split_train, 
+                valid = split_val, 
+                test = split_test)
 
 
 def prepare_dataset(
     dataset,
     experiment: Dict[str, Any],
-    graph_index: int,
     make_undirected: bool,
 ) -> Tuple[
     TensorType["num_nodes", "num_features"],
@@ -356,39 +358,48 @@ def prepare_dataset(
     logging.debug("Memory Usage before loading the dataset:")
     logging.debug(torch.cuda.memory_allocated(device=None) / (1024**3))
 
-    if graph_index is None:
-        graph_index = 0
-
+    graph_index =  experiment['dataset'].get('graph_index', 0)
+    
     data = dataset[graph_index]
-
+    edge_index = data.edge_index
+        
     if hasattr(data, "num_nodes"):
         num_nodes = data.num_nodes
     else:
         num_nodes = data.x.shape[0]
 
-    # converting to numpy arrays, so we don't have to handle different array types (tensor/numpy/list) later on.
-    # Also we need numpy arrays because Numba cant determine type of torch.Tensor
-
     device = experiment["device"]
-    # edge_index = data.edge_index
+
     if data.edge_attr is not None:
         edge_weight = data.edge_attr
     elif data.edge_weight is not None:
         edge_weight = data.edge_weight
     else:
-        edge_weight = torch.ones(data.edge_index.shape[1])
+        edge_weight = torch.ones(edge_index.shape[1])
     
-    num_edges = data.edge_index.size(1)
-    edge_index = data.edge_index
-    if make_undirected:
+    num_edges = edge_index.size(1)
+    is_undirected_graph = is_undirected(edge_index, edge_weight)
+    if is_undirected_graph:
+        if not make_undirected:
+            raise ValueError(
+                f"The graph {graph_index} of dataset {experiment['dataset']['name']} is undirected, but make_undirected is set to False. "
+            )
+        else:
+            logging.warning(f"In YAML, make_undirected is set to True but the graph index {graph_index} to be used of dataset {experiment['dataset']['name']} is already undirected.")
+    
+    if not is_undirected_graph and make_undirected:
         edge_index, edge_weight = to_undirected(edge_index, edge_weight, num_nodes, reduce="mean")
         num_edges = edge_index.shape[1]
         logging.debug("Memory Usage after making the graph undirected:")
         logging.debug(torch.cuda.memory_allocated(device=None) / (1024**3))
-        
-    adj = SparseTensor(row=edge_index[0], col=edge_index[1], value=edge_weight).t().to(device)
     
+    try:
+        adj = SparseTensor(row=edge_index[0], col=edge_index[1], value=edge_weight).t().to(device)
+    except Exception as e:
+        raise ValueError(f"Failed to convert edge_index of the graph {graph_index} of dataset {experiment['dataset']['name']} to SparseTensor: {e}")
     
+    del edge_index
+    del edge_weight
     # edge_weight = edge_weight.cpu()
 
     # adj = sp.csr_matrix((edge_weight, edge_index), (num_nodes, num_nodes))
@@ -422,8 +433,8 @@ def prepare_dataset(
     
     labels = data.y.squeeze().to(device)
 
-    split = splitter(dataset, data, labels, experiment["seed"])
-    split = {k: v.numpy() for k, v in split.items()}
+    split = splitter(dataset, data, labels, experiment)
+    
 
     experiment["model"]["params"].update(
         {
@@ -433,10 +444,9 @@ def prepare_dataset(
     )
 
     return attr, adj, labels, split, num_edges
-# , edge_weight
 
 
-def splitter(dataset, data, labels, seed):
+def splitter(dataset, data, labels, experiment):
     """
     Splits the dataset into train, validation, and test sets.
 
@@ -449,25 +459,27 @@ def splitter(dataset, data, labels, seed):
     Returns:
         A dictionary containing the indices of the train, validation, and test sets.
     """
+    
     if hasattr(dataset, "get_idx_split"):
         split = dataset.get_idx_split()
         logging.debug(f"Using the provided split from get_idx_split().")
-        return split
+        # return split
     else:
-        try:
+        if hasattr(data, 'train_mask') and hasattr(data, 'val_mask') and hasattr(data, 'test_mask'):
             split = dict(
                 train=data.train_mask.nonzero().squeeze(),
                 valid=data.val_mask.nonzero().squeeze(),
                 test=data.test_mask.nonzero().squeeze(),
             )
-            logging.debug(f"Using the provided split with train, val, test mask.")
-            return split
-        except AttributeError:
-            logging.debug(
-                f"Dataset doesn't provide train, val, test splits. Using random_splitter() for the splitting."
+            logging.debug(f"Using the provided split with train, val, test mask of the dataset {experiment['dataset']['name']}")
+            # return split
+        else:
+            logging.info(
+                f"Dataset {experiment['dataset']['name']} doesn't provide train, val, test splits. Using random_splitter() for the splitting."
             )
-            return random_splitter(labels=labels.cpu().numpy(), seed=seed)
-
+            return random_splitter(labels=labels.cpu().numpy(), seed=experiment["seed"])
+    split = {k: v.numpy() for k, v in split.items()}
+    return split
 
 def to_symmetric_scipy(adjacency: sp.csr_matrix):
     sym_adjacency = (adjacency + adjacency.T).astype(bool).astype(float)

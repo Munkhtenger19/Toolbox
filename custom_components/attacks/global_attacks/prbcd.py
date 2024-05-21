@@ -11,8 +11,8 @@ import torch_sparse
 from torch_sparse import SparseTensor
 
 # from rgnn_at_scale.models import MODEL_TYPE
-from gnn_toolbox.custom_components import utils
-from gnn_toolbox.custom_components.attacks.base_attack import GlobalAttack
+from custom_components import utils
+from custom_components.attacks.base_attack import GlobalAttack
 from gnn_toolbox.registry import register_global_attack
 
 @register_global_attack("PRBCD")

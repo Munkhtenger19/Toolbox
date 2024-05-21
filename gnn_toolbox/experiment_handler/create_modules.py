@@ -29,9 +29,10 @@ def create_transforms(configs):
 def create_dataset(name: str, root: str, transforms=None, **kwargs) -> Dataset:
     dataset = get_from_registry("dataset", name, registry)
     transforms = create_transforms(transforms) if transforms else None
+    params = kwargs.get("params", {})
     if 'name' in signature(dataset).parameters.keys():
-        return dataset(name = name, root=root, transform=transforms)
-    return dataset(root=root, transform=transforms, **kwargs)
+        return dataset(name = name, root=root, transform=transforms, **params)
+    return dataset(root=root, transform=transforms, **params)
 
 def create_model(model):
     architecture = get_from_registry("model", model['name'], registry)

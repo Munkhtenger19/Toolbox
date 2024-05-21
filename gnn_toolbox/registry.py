@@ -1,6 +1,6 @@
 from typing import Any, Callable, Dict, Union
 from functools import partial
-from gnn_toolbox.custom_components import * # noqa
+from custom_components import * # noqa
 import inspect
 
 MODULE_TYPE = Any
@@ -37,11 +37,11 @@ def register_component(
             raise KeyError(
                 f"Component with '{key}' already defined in category '{category}'"
             )
-        if key == 'model':
+        if category == 'model':
             try:
                 check_model_signature(component)
             except Exception as e:
-                raise ValueError(f"Failed to validate model signature: {e}")
+                raise ValueError(f"Failed to validate model signature of model '{component.__name__}': {e}")
         registry[category][key] = component
         return
 
@@ -77,20 +77,56 @@ def get_from_registry(
 
 
 def check_model_signature(model):
-    sig = inspect.signature(model.forward)
+    forward_method = check_forward_in_inheritance_chain(model)
+    if not forward_method:
+        raise TypeError(f"The class {model.__name__} or its ancestors do not define a 'forward' method.")
+    
+    sig = inspect.signature(forward_method)
     parameters = [
-        param.name for param in sig.parameters.values() if param.name != "self"
+        param for param in sig.parameters.values() if param.name != "self" and param.name != "kwargs"
     ]
 
+    # allowed_signatures = [
+    #     ["x", "edge_index"],
+    #     ["x", "edge_index", "edge_weight"],
+    #     ["x", "edge_index", "edge_attr"]
+    # ]
+
+    # if parameters not in allowed_signatures:
+    #     raise TypeError(
+    #         f"Invalid forward parameters. Allowed parameters are {allowed_signatures}."
+    #     )
+    required_params = ["x", "edge_index"]
+    optional_params = ["edge_weight", "edge_attr"]
     allowed_signatures = [
         ["x", "edge_index"],
-        ["x", "edge_index", "edge_weight"]
+        ["x", "edge_index", "edge_weight"],
+        ["x", "edge_index", "edge_attr"]
     ]
 
-    if parameters not in allowed_signatures:
+    for param in required_params:
+        if param not in [p.name for p in parameters]:
+            raise TypeError(f"Missing required parameter '{param}' in 'forward' method of class {model.__name__}.")
+
+    for param in parameters:
+        if param.name not in required_params + optional_params:
+            # if param.default is inspect.Parameter.empty:
+            raise TypeError(f"Invalid parameter '{param.name}' in 'forward' method of model {model.__name__}. Only {required_params + optional_params} are allowed.")
+
+    # if not any([set(required_params + [opt]).issubset([p.name for p in parameters]) for opt in optional_params]):
+    #     raise TypeError(f"The 'forward' method of class {model.__name__} does not match any of the allowed signatures {allowed_signatures}.")
+    params_names = [param.name for param in parameters]
+    if params_names not in allowed_signatures:
         raise TypeError(
             f"Invalid forward parameters. Allowed parameters are {allowed_signatures}."
         )
+
+
+def check_forward_in_inheritance_chain(cls):
+    for base in inspect.getmro(cls):
+        if 'forward' in base.__dict__:
+            return base.__dict__['forward']
+    return None
 
 
 # def register_model(func):

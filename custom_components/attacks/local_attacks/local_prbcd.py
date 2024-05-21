@@ -12,8 +12,8 @@ from torch_sparse import SparseTensor
 
 from tqdm import tqdm
 
-from gnn_toolbox.custom_components.attacks.base_attack import LocalAttack
-from gnn_toolbox.custom_components import utils
+from custom_components.attacks.base_attack import LocalAttack
+from custom_components import utils
 from gnn_toolbox.registry import register_local_attack
 
 

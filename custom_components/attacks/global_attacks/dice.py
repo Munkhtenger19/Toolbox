@@ -5,8 +5,8 @@ import torch
 from torch_sparse import SparseTensor
 from tqdm import tqdm
 
-import gnn_toolbox.custom_components.utils as utils
-from gnn_toolbox.custom_components.attacks.base_attack import GlobalAttack
+import custom_components.utils as utils
+from custom_components.attacks.base_attack import GlobalAttack
 from gnn_toolbox.registry import register_global_attack
 
 @register_global_attack("DICE")

@@ -5,7 +5,7 @@ import logging
 
 class ArtifactManager:
     def __init__(self, cache_directory):
-        self.cache_directory = Path(cache_directory)
+        self.cache_directory = cache_directory
         self.cache_directory.mkdir(exist_ok=True)
     
     def folder_exists(self, folder_path):

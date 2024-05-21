@@ -3,8 +3,8 @@ import torch
 import torch_sparse
 from torch_sparse import SparseTensor
 
-from gnn_toolbox.custom_components import utils
-from gnn_toolbox.custom_components.attacks.global_attacks.prbcd import PRBCD
+from custom_components import utils
+from custom_components.attacks.global_attacks.prbcd import PRBCD
 from gnn_toolbox.registry import register_global_attack
 
 @register_global_attack("GreedyRBCD")

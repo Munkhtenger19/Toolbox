@@ -56,7 +56,7 @@ def flatten(dictionary: dict, parent_key: str = '', sep: str = '.'):
         new_key = parent_key + sep + key if parent_key else key
         if isinstance(value, MutableMapping):
             items.extend(flatten(value, new_key, sep=sep).items())
-        else:
+        elif value is not None:
             items.append((new_key, value))
     return dict(items)
 
@@ -72,6 +72,7 @@ def folder_exists(folder_path):
 
 def generate_experiments_from_yaml(experiments_config):
     output_dir = Path(experiments_config["output_dir"])
+    cache_dir = Path(experiments_config["cache_dir"])
     resume_output = experiments_config.get("resume_output", False)
     
     if (not resume_output) and folder_exists(output_dir):
@@ -103,12 +104,10 @@ def generate_experiments_from_yaml(experiments_config):
                 experiment[key] = value
             experiment = unflatten(experiment)
             experiment_dir = setup_directories(experiments_config['output_dir'], experiment['name'], id, resume_output)
-            # test2.append(experiment)
-            # exp_test.append(experiment_dir)
             all_experiments[experiment_dir] = experiment
             id+=1
             
-    return all_experiments
+    return all_experiments, cache_dir
 
 def setup_directories(base_dir, experiment_name, id, resume_output):
     base_dir = Path(base_dir)

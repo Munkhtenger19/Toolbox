@@ -7,7 +7,7 @@ from torch_geometric.nn import GCNConv
 from pytorch_lightning import LightningModule
 
 # from gnn_toolbox.old.config_def import cfg
-from gnn_toolbox.custom_components.optimizers.optimizers import register_optimizer
+# from custom_components.optimizers.optimizers import register_optimizer
 from gnn_toolbox.registry import registry
 
 class BaseModel(LightningModule):

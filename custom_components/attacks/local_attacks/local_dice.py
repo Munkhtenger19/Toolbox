@@ -1,7 +1,7 @@
 import torch
 from torch_sparse import SparseTensor
 
-from gnn_toolbox.custom_components.attacks.base_attack import LocalAttack
+from custom_components.attacks.base_attack import LocalAttack
 from gnn_toolbox.registry import register_local_attack
 
 @register_local_attack("LocalDICE")

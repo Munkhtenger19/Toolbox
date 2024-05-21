@@ -1,16 +1,26 @@
 import os
 import argparse
 import logging
-
+from custom_components import *
+from gnn_toolbox.registry import registry
 def parse_args() -> argparse.Namespace:
     """Parses the command line arguments."""
-    parser = argparse.ArgumentParser(description='Run experiments from a configuration file.')
-
+    parser = argparse.ArgumentParser(description='GNN Robustness Toolbox: Run experiments to test GNNs against adversarial attacks from configuration YAML file.')
+    # parser = argparse.ArgumentParser(description=f'available models {registry["model"].keys()} \n available global attacks {registry["global_attack"].keys()} \n available local attacks {registry["local_attack"].keys()} \n available datasets {registry["dataset"].keys()} \n available transforms {registry["transform"].keys()} \n available optimizers {registry["optimizer"].keys()} \n available losses {registry["loss"].keys()}')
     parser.add_argument('--cfg', type=str, default= os.path.join('configs', 'default_experiment.yaml'), help='The configuration YAML file path. Default is configs/good_1.yaml.')
     
     parser.add_argument('--log', type=str, default='INFO', help='Logging level. Choose from DEBUG, INFO, WARNING, ERROR, CRITICAL.')
     
+    parser.add_argument('--list-components', action='store_true', help="List registered components and exit")
+
     return parser.parse_args()
+
+def list_registered_components():
+    """
+    List all registered components
+    """
+    for key, value in registry.items():
+        print(f"Registered {key}: {list(value.keys())}")
 
 def logger_setup(logging_level):
     """
