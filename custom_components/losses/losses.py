@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 
-from gnn_toolbox.registry import register_loss
+from gnn_toolbox.registration_handler.register_components import register_loss
 
 
 @register_loss("CE")

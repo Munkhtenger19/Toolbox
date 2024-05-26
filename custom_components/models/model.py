@@ -8,7 +8,7 @@ from pytorch_lightning import LightningModule
 
 # from gnn_toolbox.old.config_def import cfg
 # from custom_components.optimizers.optimizers import register_optimizer
-from gnn_toolbox.registry import registry
+from gnn_toolbox.registration_handler.registry import registry
 
 class BaseModel(LightningModule):
     def __init__(self, config, **kwargs):

@@ -1,4 +1,4 @@
-output_dir: ./output8
+output_dir: ./output10
 # resume_output: False
 # csv_save: True
 # esd: True
@@ -7,13 +7,19 @@ experiment_templates:
     seed: [0]
     device: cuda
     model:
-      - name: GCN
+      - name: GCN2
         params:
           hidden_channels: 64
     dataset:
-      name: [QM9] # ogbn-arxiv 
+      name: [Cora]
+      # name: [CoraFull, CS, Physics, Computers, Photo, CoraCitationFull, DBLP, PubMedCitationFull, Reddit] # ogbn-arxiv 
       root: ./datasets
       make_undirected: true
+      params:
+        split: full
+      # train_ratio: 0.6
+      # test_ratio: 0.2
+      # val_ratio: 0.2
       # transforms:
       #   - name: ToUndirected
       #   - name: NormalizeFeatures
@@ -22,18 +28,19 @@ experiment_templates:
         #     value: 0.8
 
     attack:
-      - scope: 'global'
-        name: DICE
-        type: evasion
-        epsilon: [0.5]
+      # - scope: local
+      #   name: [LocalDICE]
+      #   type: poison
+      #   epsilon: [0.5]
+      #   nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
       # - scope: global
       #   name: FGSM
       #   type: poison
       #   epsilon: [0.5]
-      # - scope: global
-      #   name: PGD
-      #   type: poison
-      #   epsilon: [0.5]
+      - scope: global
+        name: DICE
+        type: poison
+        epsilon: [0.5]
 
       # - scope: local
       #   name: [LocalDICE]

@@ -20,7 +20,7 @@ class ArtifactManager:
         if is_unattacked_model:
             params = {key: value for key, value in params.items() if key != 'attack'}
             model_suffix = f"{params['model']['name']}_{params['dataset']['name']}.pt"
-            result_file_name = "result.json"
+            result_file_name = "clean_result.json"
         else:
             model_suffix = f"{params['model']['name']}_{params['dataset']['name']}_{params['attack']['name']}.pt"
             result_file_name = "attacked_result.json"
@@ -54,12 +54,14 @@ class ArtifactManager:
             if is_unattacked_model:
                 model_name = f"{params['model']['name']}_{params['dataset']['name']}.pt"
                 model_path = params_dir / model_name
-                result_path = params_dir / 'result.json'
+                result_path = params_dir / 'clean_result.json'
                 logging.info(f'Found the unattacked trained model at {model_path}')
                 if result_path.exists():
                     with result_path.open('r') as file:
                         result = json.load(file)
                     logging.info(f'Found the {model_name} training result at {result_path}')
+                else:
+                    result = None
             else:
                 attacked_model_name = f"{params['model']['name']}_{params['dataset']['name']}_{params['attack']['name']}.pt"
                 model_path = params_dir / attacked_model_name
@@ -69,6 +71,8 @@ class ArtifactManager:
                     with result_path.open('r') as file:
                         result = json.load(file)
                     logging.info(f'Found the poisoned {attacked_model_name} training result at {result_path}')
+                else:
+                    result = None
             return model_path, result
         return None, None
 

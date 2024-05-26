@@ -18,21 +18,22 @@ def main(file):
         for curr_dir, experiment in experiments.items():
             try:
                 result, experiment_cfg = run_experiment(experiment, curr_dir, artifact_manager)
-                experiment_logger = LogExperiment(curr_dir, experiment_cfg, result)
+                experiment_logger = LogExperiment(curr_dir, experiment_cfg, result, experiments_config['csv_save'])
                 experiment_logger.save_results()
-            except (DatasetCreationError, DataPreparationError,  ModelCreationError, ModelTrainingError) as e:
-                # logging.exception(e)
-                logging.error(f"Failed to run this experiment, so skipping to the next experiment: {experiment}. ")
-                continue
-            except (GlobalAttackError, LocalAttackError) as e:
-                logging.error(f"Failed to run this experiment because of attack error, so skipping to the next experiment: {experiment}. ")
+            except (DatasetCreationError, DataPreparationError,  ModelCreationError, ModelTrainingError, GlobalAttackError, LocalAttackError) as e:
+                logging.exception(e)
+                logging.error(f"Failed to run this experiment, skipping to the next experiment: {experiment}. ")
                 continue
             except Exception as e:
                 logging.exception(e)
                 logging.error(f"Failed to run this experiment and save the result, so skipping to the next experiment: {experiment}.")
                 continue
+    except FileExistsError as e:
+        logging.exception(e)
+        logging.error(f"Failed to load YAML file at {file}")
     except Exception as e:
-        logging.error(f"There was an error loading YAML file or generating experiments from it.")
+        logging.exception(e)
+        logging.error(f"There was an error generating experiments or creating directories for the experiment configuration file: {file}")
     else:
         logging.info('Finished running the experiments.')
 

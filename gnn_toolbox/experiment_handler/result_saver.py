@@ -6,11 +6,11 @@ from pathlib import Path
 
 
 class LogExperiment:
-    def __init__(self, experiment_dir, experiment_cfg, result):
+    def __init__(self, experiment_dir, experiment_cfg, result, csv_save):
         self.experiment_config = experiment_cfg
         self.result = result
         self.log_to = Path(experiment_dir)
-        self.csv_save = experiment_cfg.get('csv_save', True) 
+        self.csv_save = csv_save 
         self.perturbed_result2csv = experiment_cfg['attack'].get('type') == 'poison'
     
     def save_results(self):
@@ -35,6 +35,8 @@ class LogExperiment:
                         json.dump(value, f, indent=2)
                     if self.csv_save and (key=='clean_result' or self.perturbed_result2csv):
                         self.save_to_csv(key, value)
+                    # elif self.csv_save and key=='perturbed_result':
+                    #    self.save_to_csv(key, value)
             logging.info(f"Results logged successfully to {self.log_to}.")
         except Exception as e:
             logging.error(f"Failed to log results to {self.log_to}: {e}")

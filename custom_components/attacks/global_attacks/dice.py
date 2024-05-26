@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 import custom_components.utils as utils
 from custom_components.attacks.base_attack import GlobalAttack
-from gnn_toolbox.registry import register_global_attack
+from gnn_toolbox.registration_handler.register_components import register_global_attack
 
 @register_global_attack("DICE")
 class DICE(GlobalAttack):

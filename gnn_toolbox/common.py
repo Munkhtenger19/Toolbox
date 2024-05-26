@@ -1,12 +1,5 @@
 """
 Code in this file is modified from: https://github.com/sigeisler/robustness_of_gnns_at_scale/tree/main/rgnn_at_scale
-
-@inproceedings{geisler2021_robustness_of_gnns_at_scale,
-    title = {Robustness of Graph Neural Networks at Scale},
-    author = {Geisler, Simon and Schmidt, Tobias and \c{S}irin, Hakan and Z\"ugner, Daniel and Bojchevski, Aleksandar and G\"unnemann, Stephan},
-    booktitle={Neural Information Processing Systems, {NeurIPS}},
-    year = {2021},
-}
 """
 
 import logging
@@ -15,6 +8,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import scipy.sparse as sp
+from sklearn.model_selection import train_test_split
 from tqdm.auto import tqdm
 from typing import Tuple, Union, Optional, List, Dict, Any
 from torchtyping import TensorType
@@ -179,15 +173,15 @@ def sample_attack_nodes(
         f"candidate nodes to be sampled from for the attack of which {correctly_classifed.sum().item()} have the "
         "correct class label"
     )
-    print(
-        f"Found {sum(suitable_nodes_mask)} suitable '{min_node_degree}+ degree' nodes out of {len(nodes_idx)} "
-        f"candidate nodes to be sampled from for the attack of which {correctly_classifed.sum().item()} have the "
-        "correct class label"
-    )
-    print(sum(suitable_nodes_mask))
+    # print(
+    #     f"Found {sum(suitable_nodes_mask)} suitable '{min_node_degree}+ degree' nodes out of {len(nodes_idx)} "
+    #     f"candidate nodes to be sampled from for the attack of which {correctly_classifed.sum().item()} have the "
+    #     "correct class label"
+    # )
+    # print(sum(suitable_nodes_mask))
     assert sum(suitable_nodes_mask) >= (
         topk * 4
-    ), f"There are not enough suitable nodes to sample {(topk*4)} nodes from"
+    ), f"There are not enough suitable nodes to sample {(topk*4)} number of nodes from"
 
     _, max_confidence_nodes_idx = torch.topk(
         confidences[correctly_classifed].max(-1).values, k=topk
@@ -274,60 +268,59 @@ def accuracy(
     float
         the Accuracy
     """
-    print(logits.argmax(1)[split_idx] == labels[split_idx].float())
+    # print(logits.argmax(1)[split_idx] == labels[split_idx].float())
     return (logits.argmax(1)[split_idx] == labels[split_idx]).float().mean().item()
 
 
-def random_splitter(labels, n_per_class=2, seed=None):
-    """
-    Randomly split the training data.
+# def random_splitter(labels, n_per_class=2, seed=None):
+#     """
+#     Randomly split the training data.
 
-    Parameters
-    ----------
-    labels: array-like [num_nodes]
-        The class labels
-    n_per_class : int
-        Number of samples per class
-    seed: int
-        Seed
+#     Parameters
+#     ----------
+#     labels: array-like [num_nodes]
+#         The class labels
+#     n_per_class : int
+#         Number of samples per class
+#     seed: int
+#         Seed
 
-    Returns
-    -------
-    split_train: array-like [n_per_class * nc]
-        The indices of the training nodes
-    split_val: array-like [n_per_class * nc]
-        The indices of the validation nodes
-    split_test array-like [num_nodes - 2*n_per_class * nc]
-        The indices of the test nodes
-    """
-    if seed is not None:
-        np.random.seed(seed)
-    nc = labels.max() + 1
+#     Returns
+#     -------
+#     split_train: array-like [n_per_class * nc]
+#         The indices of the training nodes
+#     split_val: array-like [n_per_class * nc]
+#         The indices of the validation nodes
+#     split_test array-like [num_nodes - 2*n_per_class * nc]
+#         The indices of the test nodes
+#     """
+#     if seed is not None:
+#         np.random.seed(seed)
+#     nc = labels.max() + 1
 
-    split_train, split_val = [], []
-    for label in range(int(nc)):
-        perm = np.random.permutation((labels == label).nonzero()[0])
-        split_train.append(perm[:n_per_class])
-        split_val.append(perm[n_per_class : 2 * n_per_class])
+#     split_train, split_val = [], []
+#     for label in range(int(nc)):
+#         perm = np.random.permutation((labels == label).nonzero()[0])
+#         split_train.append(perm[:n_per_class])
+#         split_val.append(perm[n_per_class : 2 * n_per_class])
 
-    split_train = np.random.permutation(np.concatenate(split_train))
-    split_val = np.random.permutation(np.concatenate(split_val))
+#     split_train = np.random.permutation(np.concatenate(split_train))
+#     split_val = np.random.permutation(np.concatenate(split_val))
 
-    assert split_train.shape[0] == split_val.shape[0] == n_per_class * nc
+#     assert split_train.shape[0] == split_val.shape[0] == n_per_class * nc
 
-    split_test = np.setdiff1d(
-        np.arange(len(labels)), np.concatenate((split_train, split_val))
-    )
+#     split_test = np.setdiff1d(
+#         np.arange(len(labels)), np.concatenate((split_train, split_val))
+#     )
 
-    return dict(train = split_train, 
-                valid = split_val, 
-                test = split_test)
+#     return dict(train = split_train, 
+#                 valid = split_val, 
+#                 test = split_test)
 
 
 def prepare_dataset(
     dataset,
-    experiment: Dict[str, Any],
-    make_undirected: bool,
+    experiment: Dict[str, Any]
 ) -> Tuple[
     TensorType["num_nodes", "num_features"],
     SparseTensor,
@@ -359,10 +352,11 @@ def prepare_dataset(
     logging.debug(torch.cuda.memory_allocated(device=None) / (1024**3))
 
     graph_index =  experiment['dataset'].get('graph_index', 0)
+    make_undirected = experiment['dataset'].get('make_undirected')
     
     data = dataset[graph_index]
     edge_index = data.edge_index
-        
+    
     if hasattr(data, "num_nodes"):
         num_nodes = data.num_nodes
     else:
@@ -381,11 +375,13 @@ def prepare_dataset(
     is_undirected_graph = is_undirected(edge_index, edge_weight)
     if is_undirected_graph:
         if not make_undirected:
-            raise ValueError(
-                f"The graph {graph_index} of dataset {experiment['dataset']['name']} is undirected, but make_undirected is set to False. "
-            )
+            logging.warning(f"In configuration YAML, make_undirected is set to False but the graph index {graph_index} to be used of dataset {experiment['dataset']['name']} is already undirected. Changing make_undirected to True.")
+            # raise ValueError(
+            #     f"The graph {graph_index} of dataset {experiment['dataset']['name']} is undirected, but make_undirected is set to False. "
+            # )
+            experiment["dataset"]["make_undirected"] = True
         else:
-            logging.warning(f"In YAML, make_undirected is set to True but the graph index {graph_index} to be used of dataset {experiment['dataset']['name']} is already undirected.")
+            logging.warning(f"In configuration YAML, make_undirected is set to True but the graph index {graph_index} to be used of dataset {experiment['dataset']['name']} is already undirected.")
     
     if not is_undirected_graph and make_undirected:
         edge_index, edge_weight = to_undirected(edge_index, edge_weight, num_nodes, reduce="mean")
@@ -459,25 +455,41 @@ def splitter(dataset, data, labels, experiment):
     Returns:
         A dictionary containing the indices of the train, validation, and test sets.
     """
-    
-    if hasattr(dataset, "get_idx_split"):
-        split = dataset.get_idx_split()
+    # print('qwe', experiment["dataset"]["train_ratio"])
+    # print('qwe', experiment["dataset"]["val_ratio"])
+    # print('qwe', experiment["dataset"]["test_ratio"])
+    if "train_ratio" in experiment["dataset"] and "val_ratio" in experiment["dataset"] and "test_ratio" in experiment["dataset"]:
+        logging.info(f"Using the provided train, val, test ratios for the splitting graph of dataset {experiment['dataset']['name']}.")
+        return get_train_val_test(
+            labels.shape[0],
+            train_ratio=experiment["dataset"]["train_ratio"],
+            val_ratio=experiment["dataset"]["val_ratio"],
+            test_ratio=experiment["dataset"]["test_ratio"],
+            stratify=labels.cpu().numpy(),
+            seed=experiment["seed"],
+        )
+    elif hasattr(dataset, "get_idx_split"):
         logging.debug(f"Using the provided split from get_idx_split().")
-        # return split
+        split = dataset.get_idx_split()
+    elif hasattr(data, 'train_mask') and hasattr(data, 'val_mask') and hasattr(data, 'test_mask'):
+        split = dict(
+            train=data.train_mask.nonzero().squeeze(),
+            valid=data.val_mask.nonzero().squeeze(),
+            test=data.test_mask.nonzero().squeeze(),
+        )
+        logging.debug(f"Using the provided split with train, val, test mask of the dataset {experiment['dataset']['name']}")
     else:
-        if hasattr(data, 'train_mask') and hasattr(data, 'val_mask') and hasattr(data, 'test_mask'):
-            split = dict(
-                train=data.train_mask.nonzero().squeeze(),
-                valid=data.val_mask.nonzero().squeeze(),
-                test=data.test_mask.nonzero().squeeze(),
-            )
-            logging.debug(f"Using the provided split with train, val, test mask of the dataset {experiment['dataset']['name']}")
-            # return split
-        else:
-            logging.info(
-                f"Dataset {experiment['dataset']['name']} doesn't provide train, val, test splits. Using random_splitter() for the splitting."
-            )
-            return random_splitter(labels=labels.cpu().numpy(), seed=experiment["seed"])
+        logging.info(
+            f"Dataset {experiment['dataset']['name']} doesn't provide train, val, test splits. Using get_train_val_test() for the splitting the dataset to train_ratio=0.6, val_ratio=0.2, test_ratio=0.2."
+        )
+        return get_train_val_test(
+            labels.shape[0],
+            train_ratio=0.6,
+            val_ratio=0.2,
+            test_ratio=0.2,
+            stratify=labels.cpu().numpy(),
+            seed=experiment["seed"]
+        )
     split = {k: v.numpy() for k, v in split.items()}
     return split
 
@@ -488,6 +500,60 @@ def to_symmetric_scipy(adjacency: sp.csr_matrix):
 
     return sym_adjacency
 
+def get_train_val_test(nnodes, train_ratio, val_ratio, test_ratio, stratify, seed):
+    """Splits the data into train, validation, and test sets, optionally with stratification.
+
+    Parameters
+    ----------
+    nnodes : int
+        Number of nodes in total.
+    train_ratio : float
+        Proportion of data for training (default: 0.1).
+    val_ratio : float
+        Proportion of data for validation (default: 0.1).
+    stratify : array-like, optional
+        Labels for stratified splitting. If provided, splits will have similar label distributions.
+    seed : int or None, optional
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    idx_train : ndarray
+        Node training indices.
+    idx_val : ndarray
+        Node validation indices.
+    idx_test : ndarray
+        Node test indices.
+    """
+    np.random.seed(seed)
+
+    idx = np.arange(nnodes)
+
+    # Calculate test ratio based on train and validation ratios
+    # test_ratio = 1 - train_ratio - val_ratio
+    
+    # Split into train/val and test
+    idx_train_val, idx_test = train_test_split(
+        idx,
+        random_state=seed,
+        train_size=train_ratio + val_ratio,
+        test_size=test_ratio,
+        stratify=stratify
+    )
+
+    # Split train/val into train and val
+    idx_train, idx_val = train_test_split(
+        idx_train_val,
+        random_state=seed,
+        train_size=train_ratio / (train_ratio + val_ratio),
+        test_size=val_ratio / (train_ratio + val_ratio),
+        stratify=stratify[idx_train_val]
+    )
+
+    # return idx_train, idx_val, idx_test
+    return dict(train = idx_train, 
+                valid = idx_val, 
+                test = idx_test)
 
 def is_directed(adj_matrix) -> bool:
     """Check if the graph is directed (adjacency matrix is not symmetric)."""

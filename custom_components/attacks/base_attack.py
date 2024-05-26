@@ -1,12 +1,5 @@
 """
 Code in this file is modified from: https://github.com/sigeisler/robustness_of_gnns_at_scale/tree/main/rgnn_at_scale
-
-@inproceedings{geisler2021_robustness_of_gnns_at_scale,
-    title = {Robustness of Graph Neural Networks at Scale},
-    author = {Geisler, Simon and Schmidt, Tobias and \c{S}irin, Hakan and Z\"ugner, Daniel and Bojchevski, Aleksandar and G\"unnemann, Stephan},
-    booktitle={Neural Information Processing Systems, {NeurIPS}},
-    year = {2021},
-}
 """
 
 import warnings
@@ -25,7 +18,7 @@ from torch import Tensor
 from torch.nn import functional as F
 from torch_sparse import SparseTensor
 
-from gnn_toolbox.registry import registry, get_from_registry
+from gnn_toolbox.registration_handler.registry import registry, get_from_registry
 
 @typechecked
 class BaseAttack(ABC):

@@ -6,7 +6,7 @@ from torch_geometric.nn import GATConv, GCNConv, GCN, GAT
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 # from gnn_toolbox.custom_modules.models.model
 # import gnn_toolbox
-from gnn_toolbox.registry import register_model
+from gnn_toolbox.registration_handler.register_components import register_model
 import os
 from typing import Any, Dict, Union
 
@@ -37,7 +37,7 @@ def GCN_(in_channels, out_channels, hidden_channels):
 # @register_model('gat')
 # def GAT
 
-@register_model('gcn3')
+@register_model('GCN2')
 class GCN2(nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2):
         super().__init__()
@@ -49,7 +49,7 @@ class GCN2(nn.Module):
         self.conv1.reset_parameters()
         self.conv2.reset_parameters()
 
-    def forward(self, x, edge_index, edge_weight=None):
+    def forward(self, x, edge_index, edge_weight=None, **kwargs):
         # Normalize edge indices only once:
         if not kwargs.get('skip_norm', False):
             edge_index, edge_weight = self.norm(
@@ -64,10 +64,10 @@ class GCN2(nn.Module):
         x = self.conv2(x, edge_index, edge_weight)
         return x
     
-    def _extract_model_info(self):
-        layers = list(self.modules())
-        for idx, m in enumerate(self.modules()):
-            print(idx, '->', m)
+    # def _extract_model_info(self):
+    #     layers = list(self.modules())
+    #     for idx, m in enumerate(self.modules()):
+    #         print(idx, '->', m)
     
 # model = GCN(16, 16, 16)
 # print(model.hparams)

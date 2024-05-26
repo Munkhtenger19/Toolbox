@@ -22,106 +22,54 @@ from gnn_toolbox.experiment_handler.exceptions import ModelError, AttackError, G
 
 def run_experiment(experiment, experiment_dir, artifact_manager):
     # print('experiment', experiment)
-    # writer = SummaryWriter(f"{experiment_dir}")
+    writer = SummaryWriter(f"{experiment_dir}")
     seed_everything(experiment['seed'])
     device = experiment['device']
     # graph_index =  experiment['dataset'].pop('graph_index', None)
-    make_undirected = experiment['dataset'].get('make_undirected', False)
+    
     try:
         dataset = create_dataset(**experiment['dataset'])
     except Exception as e:
-        logging.exception(e)
+        # logging.exception(e)
         raise DatasetCreationError(f"Failed to instantiate the dataset {experiment['dataset']['name']} with the parameters.") from e
     try:
-        attr, adj, labels, split, num_edges = prepare_dataset(dataset, experiment, make_undirected) 
-    # except ValueError as e:
-    #     logging.exception(e)
-    #     logging.error(f"Failed to prepare the dataset {experiment['dataset']['name']}.")
-    #     raise DataError(f"Failed to prepare the dataset {experiment['dataset']['name']}.")
-    # except AttributeError as e:
-    #     logging.exception(e)
-    #     logging.error(f"Failed to instantiate the model {experiment['model']['name']} with the parameters.")
-    #     return
+        attr, adj, labels, split, num_edges = prepare_dataset(dataset, experiment) 
     except Exception as e:
         # logging.exception(e)
         # logging.error(f"Failed to prepare the dataset {experiment['dataset']['name']}.")
         raise DataPreparationError(f"Failed to prepare the dataset {experiment['dataset']['name']}.") from e
-        
+    
     try:
         model = create_model(experiment['model'])
         untrained_model_state_dict = model.state_dict()
     except Exception as e:
-        logging.exception(e)
+        # logging.exception(e)
         # logging.error(f"Failed to instantiate the model {experiment['model']['name']} with the parameters.")
         raise ModelCreationError(f"Failed to instantiate the model {experiment['model']['name']} with the parameters.") from e
     # _, accuracy = evaluate_global(model=model, attr=attr, adj=adj, labels=labels, idx_test=split['test'], device=device) 
     
     # print('untrained model accuracy', accuracy)
-    
+    make_undirected = experiment['dataset'].get('make_undirected')
     try:
         clean_result = clean_train(experiment, artifact_manager, model, attr, adj, labels, split, device)
     except Exception as e:
-        logging.exception(e)
+        # logging.exception(e)
         raise ModelTrainingError(f"Error during training the model {experiment['model']['name']} with unperturbed (clean) data") from e
     
     perturbed_result = None
     try:
         if(experiment['attack']['scope'] == 'global'):
-            perturbed_result = execute_global_attack(experiment, attr, adj, labels, split, model, device, num_edges, make_undirected, untrained_model_state_dict, artifact_manager)
-            # if experiment['attack']['type'] == 'poison':
-            #     adversarial_attack, n_perturbations = instantiate_global_attack(experiment['attack'], attr, adj, labels, split['train'], model, device, num_edges, make_undirected)
-                
-            #     model_path, perturbed_result = artifact_manager.model_exists(experiment, is_unattacked_model=False)
-                
-            #     if model_path is None or perturbed_result is None:
-            #     #     model.load_state_dict(torch.load(model_path))
-            #     #     model.to(device)
-            #     #     return 
-            #     # else:    
-            #         try:
-            #             adversarial_attack.attack(n_perturbations)
-            #             pert_adj, pert_attr = adversarial_attack.get_perturbations()
-            #             perturbed_result = train_and_evaluate(model, pert_attr, pert_adj, attr, adj, labels, split, device, experiment, artifact_manager, is_unattacked_model=False, untrained_model_state_dict = untrained_model_state_dict)
-            #         except Exception as e:
-            #             logging.exception(e)
-            #             logging.error(f"Global poisoning adversarial attack {experiment['attack']['name']} failed to attack the model {experiment['model']['name']}")
-            #             return
-            # elif experiment['attack']['type'] == 'evasion':
-            #     adversarial_attack, n_perturbations = instantiate_global_attack(experiment['attack'], attr, adj, labels, split['test'], model, device, num_edges, make_undirected)
-                
-            #     try:
-            #         adversarial_attack.attack(n_perturbations)
-            #         pert_adj, pert_attr = adversarial_attack.get_perturbations()
-            #     except Exception as e:
-            #         logging.exception(e)
-            #         logging.error(f"Global evasion adversarial attack {experiment['attack']['name']} failed to attack the model {experiment['model']['name']}")
-            #         return
-                        
-            #             # correct one, with no t() 
-            #     logits, accuracy = evaluate_model(model=model, attr=pert_attr, adj=pert_adj, labels=labels, idx_test=split['test'], device=device)
-            #     logits0, accuracy0 = evaluate_model(model=model, attr=pert_attr, adj=pert_adj.t(), labels=labels, idx_test=split['test'], device=device)
-            #     logits2, accuracy2 = evaluate_model(model=model, attr=attr, adj=adj.t(), labels=labels, idx_test=split['test'], device=device)
-            #     # correct one, with no t()
-            #     logits3, accuracy3 = evaluate_model(model=model, attr=attr, adj=adj, labels=labels, idx_test=split['test'], device=device)
-            #     logging.info(f'HEREE, {accuracy}')
-            #     logging.info(f'HEREE0, {accuracy0}')
-            #     logging.info(f'HEREE2, {accuracy2}')
-            #     logging.info(f'HEREE3, {accuracy3}')
-            #     perturbed_result ={
-            #         'logits': logits.cpu().numpy().tolist(),
-            #         'accuracy': accuracy,
-            #     }
-            
+            perturbed_result = execute_global_attack(experiment, attr, adj, labels, split, model, device, num_edges, make_undirected, untrained_model_state_dict, artifact_manager)            
         elif(experiment['attack']['scope'] == 'local'):        
             perturbed_result = execute_local_attack(experiment, attr, adj, labels, split, model, device, make_undirected)
     except GlobalAttackError as e:
-        logging.exception(e)
+        # logging.exception(e)
         raise AttackError(f"Error during global attack {experiment['attack']['name']} execution") from e
     except LocalAttackError as e:
-        logging.exception(e)
+        # logging.exception(e)
         raise AttackError(f"Error during local attack {experiment['attack']['name']} execution") from e
     except Exception as e:
-        logging.exception(e)
+        # logging.exception(e)
         raise Exception(f"Error during attack {experiment['attack']['name']} execution") from e
     all_result = {
         'clean_result': clean_result,
@@ -140,7 +88,7 @@ def execute_global_attack(experiment, attr, adj, labels, split, model, device, n
                 try:
                     adversarial_attack.attack(n_perturbations)
                 except Exception as e:
-                    logging.exception(e)
+                    # logging.exception(e)
                     raise GlobalAttackError(f"Error during executing 'attack' method of a global attack{experiment['attack']['name']}") from e
                 pert_adj, pert_attr = adversarial_attack.get_perturbations()
                 perturbed_result = train_and_evaluate(model, pert_attr, pert_adj, attr, adj, labels, split, device, experiment, artifact_manager, is_unattacked_model=False, untrained_model_state_dict = untrained_model_state_dict)
@@ -161,10 +109,10 @@ def execute_global_attack(experiment, attr, adj, labels, split, model, device, n
             }
         return perturbed_result
     except GlobalAttackCreationError as e:
-        logging.exception(e)
+        # logging.exception(e)
         raise GlobalAttackError(f"Error during global attack {experiment['attack']['name']} instantiation") from e
     except Exception as e:
-        logging.exception(e)
+        # logging.exception(e)
         raise GlobalAttackError(f"Error during global attack {experiment['attack']['name']} execution") from e
     
 def clean_train(current_config, artifact_manager, model, attr, adj, labels, split, device):
@@ -234,7 +182,7 @@ def execute_local_attack(experiment, attr, adj, labels, split, model, device, ma
             idx_attack=split['test'],
             model=model, device=device, make_undirected=make_undirected, **attack_params)
     except Exception as e:
-        logging.exception(e)
+        # logging.exception(e)
         raise LocalAttackCreationError(f"Failed to create local adversarial attack '{experiment['attack']['name']}'.") from e
 
     results = []
@@ -264,7 +212,7 @@ def execute_local_attack(experiment, attr, adj, labels, split, model, device, ma
             try:
                 attack_model.attack(n_perturbations, node_idx=node)
             except Exception as e:
-                logging.exception(e)
+                # logging.exception(e)
                 raise LocalAttackError(
                     f"Error during executing 'attack' method of a global attack{experiment['attack']['name']} using with eps {eps} at node {node}.") from e
             
@@ -318,10 +266,10 @@ def execute_local_attack(experiment, attr, adj, labels, split, model, device, ma
             logging.info(f'Node {node} with perturbed edges evaluated on model {experiment["model"]["name"]} using adversarial attack {experiment["attack"]["name"]} with epsilon {eps}')
             logging.debug(results[-1])
     except LocalAttackCreationError as e:
-        logging.exception(e)
+        # logging.exception(e)
         raise LocalAttackError(f"Error during local attack {experiment['attack']['name']} instantiation") from e
     except Exception as e:
-        logging.exception(e)
+        # logging.exception(e)
         raise LocalAttackError(f"Error during local attack {experiment['attack']['name']} execution") from e
     assert len(results) > 0, "No attack could be made."
     return results

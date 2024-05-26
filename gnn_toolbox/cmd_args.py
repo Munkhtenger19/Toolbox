@@ -2,7 +2,7 @@ import os
 import argparse
 import logging
 from custom_components import *
-from gnn_toolbox.registry import registry
+from gnn_toolbox.registration_handler.registry import registry
 def parse_args() -> argparse.Namespace:
     """Parses the command line arguments."""
     parser = argparse.ArgumentParser(description='GNN Robustness Toolbox: Run experiments to test GNNs against adversarial attacks from configuration YAML file.')

@@ -2,15 +2,19 @@ import yaml
 import torch
 import logging
 from typing import List, Dict, Union, Optional, Literal
-from pydantic import BaseModel, ConfigDict, model_validator, PositiveInt, PositiveFloat, NonNegativeInt
-from gnn_toolbox.registry import registry
+from pydantic import BaseModel, ConfigDict, model_validator, PositiveInt, PositiveFloat, NonNegativeInt, field_validator
+from gnn_toolbox.registration_handler.registry import registry
+from custom_components import *
 
 PARAMS_TYPE = Union[List[int], int, List[float], float, List[str], str, List[bool], bool]
 
 
 def load_and_validate_yaml(yaml_path: str):
-    with open(yaml_path, 'r') as file:
-        yaml_data = yaml.safe_load(file)
+    try:
+        with open(yaml_path, 'r') as file:
+            yaml_data = yaml.safe_load(file)
+    except Exception as e:
+        raise FileExistsError(f"Failed to load YAML file at {yaml_path}.") from e
     try:
         config = Config(**yaml_data)
         logging.info(f"Given YAML file at {yaml_path} is valid, generating experiments.")
@@ -22,7 +26,7 @@ def load_and_validate_yaml(yaml_path: str):
                 continue
             logging.error(format_error_message(error))
             
-        raise ValueError("Validation error(s) encountered. See logs for details.")
+        raise ValueError("Validation error(s) encountered. See logs for details.") from e
 
 def check_device():
     if torch.cuda.is_available():
@@ -42,11 +46,19 @@ class Optimizer(BaseModel):
     model_config = ConfigDict(extra='forbid')
     name: str
     params: Optional[Dict[str, PARAMS_TYPE]] = {}
+    @model_validator(mode='after')
+    def name_must_be_registered(self):
+        check_if_value_registered(self.name, 'optimizer')
+        return self
 
 class Transform(BaseModel):
     model_config = ConfigDict(extra='forbid')
     name: str
     params: Optional[Dict[str, PARAMS_TYPE]] = {}
+    @model_validator(mode='after')
+    def name_must_be_registered(self):
+        check_if_value_registered(self.name, 'transform')
+        return self
 
 class Training(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -62,19 +74,57 @@ class Loss(BaseModel):
     model_config = ConfigDict(extra='forbid')
     name: str
     params: Optional[Dict[str, PARAMS_TYPE]] = {}
+    @model_validator(mode='after')
+    def name_must_be_registered(self):
+        check_if_value_registered(self.name, 'loss')
+        return self
 
 class Dataset(BaseModel):
     model_config = ConfigDict(extra='forbid')
     name: Union[str, List[str]]
     root: str = './datasets'
     make_undirected: Optional[bool] = False
-    graph_index: Optional[int] = 0
+    graph_index: Optional[PositiveInt] = 0
     transforms: Optional[Union[Transform, List[Transform]]]  = None
+    train_ratio: Optional[PositiveFloat] = None
+    val_ratio: Optional[PositiveFloat] = None
+    test_ratio: Optional[PositiveFloat] = None
+    params: Optional[Dict[str, PARAMS_TYPE]] = {}
+    
+    @field_validator('train_ratio', 'val_ratio', 'test_ratio')
+    def check_ratio_range(cls, value):
+        if value is not None and (value < 0 or value > 1):
+            raise ValueError("Dataset split ratios must be between 0 and 1.")
+        return value
+    
     @model_validator(mode='after')
     def name_must_be_registered(self):
         check_if_value_registered(self.name, 'dataset')
+        self.train_ratio, self.val_ratio, self.test_ratio = check_ratios(self.train_ratio, self.val_ratio, self.test_ratio)
         return self
 
+def check_ratios(train_ratio, val_ratio, test_ratio):
+    provided_ratios = [r for r in [train_ratio, val_ratio, test_ratio] if r is not None]
+    if len(provided_ratios) == 1:
+        raise ValueError("At least two of train_ratio, val_ratio, and test_ratio must be provided if any are given.")
+    elif len(provided_ratios) == 2:
+        total_provided = sum(provided_ratios)
+        if total_provided > 1.0:
+            raise ValueError(f"train_ratio, val_ratio, and test_ratio sum must be less or equal to 1.0 but the sum is {total_provided}.")
+        leftover_ratio = 1.0 - total_provided
+        if train_ratio is None:
+            train_ratio = leftover_ratio
+        elif val_ratio is None:
+            val_ratio = leftover_ratio
+        else:
+            test_ratio = leftover_ratio
+    elif len(provided_ratios) == 3:
+        total_provided = sum(provided_ratios)
+        if total_provided > 1.0:
+            raise ValueError(f"train_ratio, val_ratio, and test_ratio sum must be less or equal to 1.0 but the sum is {total_provided}.")
+    return train_ratio, val_ratio, test_ratio
+        
+    
 def check_if_value_registered(value, key):
     if isinstance(value, List):
         for name in value:
@@ -134,7 +184,7 @@ def format_error_message(error):
 import os
 dir_path = os.path.dirname(os.path.realpath(__file__))
 # # # Join the directory path and your file name
-file_path = os.path.join(dir_path, 'good_1.yaml')
+file_path = os.path.join(dir_path, 'default_experiment.yaml')
 
 import torch.optim as optim
 
@@ -144,7 +194,7 @@ import torch.optim as optim
 # try:
 #     a = load_and_validate_yaml(file_path)
 #     # b = a.model_dump()
-#     # print(b)
+#     print(a)
 # except Exception as e:
 #     print(e)
 # optimizer(**a.experiment_templates[0].optimizer.params)

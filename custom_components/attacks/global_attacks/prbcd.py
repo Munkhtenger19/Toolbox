@@ -13,7 +13,7 @@ from torch_sparse import SparseTensor
 # from rgnn_at_scale.models import MODEL_TYPE
 from custom_components import utils
 from custom_components.attacks.base_attack import GlobalAttack
-from gnn_toolbox.registry import register_global_attack
+from gnn_toolbox.registration_handler.register_components import register_global_attack
 
 @register_global_attack("PRBCD")
 class PRBCD(GlobalAttack):

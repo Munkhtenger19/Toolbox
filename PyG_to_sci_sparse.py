@@ -306,7 +306,7 @@ def accuracy(pred, y, mask):
     return (pred.argmax(-1)[mask] == y[mask]).float().mean()
 # print(data9.is_directed())
 # dataset2= PygNodePropPredDataset(name='ogbn-arxiv', root='./datasets', transform=T.ToSparseTensor(remove_edge_index=False))
-dataset1= Planetoid(name = 'cora', root = './datasets')
+dataset1= Planetoid(name = 'pubmed', root = './datasets')
 data = dataset1[0]
 train=data.train_mask.nonzero().squeeze()
 model1= GCN(in_channels=dataset1.num_features, out_channels=dataset1.num_classes, hidden_channels=32, num_layers=2)
@@ -317,6 +317,7 @@ from torch_geometric.datasets import PPI, KarateClub
 dataset9 = QM9(root = './datasets', transform=T.ToSparseTensor(remove_edge_index=False))
 data12 = dataset9[0]
 print(data12)
+print(data)
 
 # print('pygnodepred', dataset1)
 # we = dataset1[0]

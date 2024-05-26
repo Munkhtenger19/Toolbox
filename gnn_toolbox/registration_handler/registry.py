@@ -1,6 +1,5 @@
 from typing import Any, Callable, Dict, Union
-from functools import partial
-from custom_components import * # noqa
+# from custom_components import * # noqa
 import inspect
 
 MODULE_TYPE = Any
@@ -55,8 +54,7 @@ def register_component(
 def get_from_registry(
     category: str,
     key: str,
-    registry: Dict[str, Dict[str, MODULE_TYPE]],
-    default: Any = None,
+    registry: Dict[str, Dict[str, MODULE_TYPE]]
 ) -> Any:
     """Retrieve a component from the registry safely with a fallback."""
     if category not in registry:
@@ -68,12 +66,9 @@ def get_from_registry(
     if key in category_registry:
         return category_registry[key]
     else:
-        if default is not None:
-            return default
-        else:
-            raise KeyError(
-                f"Component '{key}' not found in category '{category}'. Available options: {list(category_registry.keys())}"
-            )
+        raise KeyError(
+            f"Component '{key}' not found in category '{category}'. Available options: {list(category_registry.keys())}"
+        )
 
 
 def check_model_signature(model):
@@ -157,10 +152,3 @@ def check_forward_in_inheritance_chain(cls):
 #     return wrapper
 #     return
 
-register_model = partial(register_component, "model")
-register_global_attack = partial(register_component, "global_attack")
-register_local_attack = partial(register_component, "local_attack")
-register_dataset = partial(register_component, "dataset")
-register_transform = partial(register_component, "transform")
-register_optimizer = partial(register_component, "optimizer")
-register_loss = partial(register_component, "loss")

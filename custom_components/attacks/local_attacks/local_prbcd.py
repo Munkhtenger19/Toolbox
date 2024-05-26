@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 from custom_components.attacks.base_attack import LocalAttack
 from custom_components import utils
-from gnn_toolbox.registry import register_local_attack
+from gnn_toolbox.registration_handler.register_components import register_local_attack
 
 
 @register_local_attack("LocalPRBCD")

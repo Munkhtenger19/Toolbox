@@ -8,31 +8,7 @@ import pprint
 
 
 KEEP_AS_LIST =['attack.nodes', 'dataset.transforms']
-CONFIG_VALUES = ['output_dir', 
-                 'experiment_templates',
-                 ]
 
-# class ConfigManager:
-#     _global_config = {}
-
-#     @staticmethod
-#     def update_config(new_config):
-#         ConfigManager._global_config = new_config
-
-#     @staticmethod
-#     def get_config():
-#         return ConfigManager._global_config
-
-class InputError(SystemExit):
-    """Parent class for input errors that don't print a stack trace."""
-    pass
-
-
-class ConfigError(InputError):
-    """Raised when the something is wrong in the config"""
-
-    def __init__(self, message="The config file contains an error."):
-        super().__init__(f"CONFIG ERROR: {message}")
     
 def flatten(dictionary: dict, parent_key: str = '', sep: str = '.'):
     """
@@ -59,6 +35,22 @@ def flatten(dictionary: dict, parent_key: str = '', sep: str = '.'):
         elif value is not None:
             items.append((new_key, value))
     return dict(items)
+
+def unflatten(dictionary):
+    """
+    Unflatten a dictionary
+    https://stackoverflow.com/questions/6037503/python-unflatten-dict
+    """
+    resultDict = dict()
+    for key, value in dictionary.items():
+        parts = key.split(".")
+        d = resultDict
+        for part in parts[:-1]:
+            if part not in d:
+                d[part] = dict()
+            d = d[part]
+        d[parts[-1]] = value
+    return resultDict
 
 def _generate_combinations(config_dict):
     # formatted_dict = { key:value[0] for key, value in config_dict.items() if isinstance(value, list) and len(value) == 1}
@@ -122,21 +114,7 @@ def setup_directories(base_dir, experiment_name, id, resume_output):
     
     return new_experiment_dir
    
-def unflatten(dictionary):
-    """
-    Unflatten a dictionary
-    https://stackoverflow.com/questions/6037503/python-unflatten-dict
-    """
-    resultDict = dict()
-    for key, value in dictionary.items():
-        parts = key.split(".")
-        d = resultDict
-        for part in parts[:-1]:
-            if part not in d:
-                d[part] = dict()
-            d = d[part]
-        d[parts[-1]] = value
-    return resultDict
+
 
 def tensorboard_logger():
     pass

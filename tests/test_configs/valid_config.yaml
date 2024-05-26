@@ -1,0 +1,55 @@
+output_dir: './output'
+cache_dir: './cache'
+experiment_templates:
+  - name: 'GCN_Robustness_Evaluation'
+    seed: [0, 1]
+    device: 'cuda'
+    model:
+      name: 'GCN'
+      params:
+        hidden_channels: 64
+        dropout: 0.5
+    dataset:
+      name: 'Cora'
+      make_undirected: False
+    attack:
+      scope: 'global'
+      type: 'evasion'
+      name: 'DICE'
+      epsilon: 0.1
+    training:
+      max_epochs: 200
+      patience: 20
+    optimizer:
+      name: 'adam'
+      params:
+        lr: 0.01
+    loss:
+      name: 'CE'
+  - name: 'GCN_Local_Attack'
+    seed: 42
+    device: 'cpu'
+    model:
+      name: 'GCN2'
+      params:
+        heads: 8
+        dropout: 0.6
+    dataset:
+      name: 'Citeseer'
+      make_undirected: True
+    attack:
+      scope: 'local'
+      type: 'poison'
+      name: 'LocalDICE'
+      epsilon: 0.05
+      nodes: [1, 5, 10]
+    training:
+      max_epochs: 150
+      patience: 15
+    optimizer:
+      name: 'adam'
+      params:
+        lr: 0.005
+        momentum: 0.9
+    loss:
+      name: 'CW'

@@ -4,7 +4,7 @@ from inspect import signature
 from torch_geometric.transforms import Compose
 from torch_geometric.data import Dataset
 
-from gnn_toolbox.registry import registry, get_from_registry
+from gnn_toolbox.registration_handler.registry import registry, get_from_registry
 
 
 def create_transforms(configs):
