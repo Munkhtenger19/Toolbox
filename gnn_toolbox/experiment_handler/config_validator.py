@@ -3,6 +3,7 @@ import torch
 import logging
 from typing import List, Dict, Union, Optional, Literal
 from pydantic import BaseModel, ConfigDict, model_validator, PositiveInt, PositiveFloat, NonNegativeInt, field_validator
+import yaml.parser
 from gnn_toolbox.registration_handler.registry import registry
 from custom_components import *
 
@@ -13,8 +14,10 @@ def load_and_validate_yaml(yaml_path: str):
     try:
         with open(yaml_path, 'r') as file:
             yaml_data = yaml.safe_load(file)
+    except (yaml.YAMLError) as e:
+        raise yaml.YAMLError(f"Failed to parse YAML file at {yaml_path}.") from e
     except Exception as e:
-        raise FileExistsError(f"Failed to load YAML file at {yaml_path}.") from e
+        raise FileExistsError(f"Failed to find or load YAML file at the location: {yaml_path}.") from e
     try:
         config = Config(**yaml_data)
         logging.info(f"Given YAML file at {yaml_path} is valid, generating experiments.")
@@ -161,7 +164,7 @@ class ExperimentTemplate(BaseModel):
     device: Optional[Literal['cpu', 'cuda']] = check_device()
     model: Union[Model, List[Model]]
     dataset: Union[Dataset, List[Dataset]]
-    attack: Union[Attack, List[Attack]]
+    attack: Optional[Union[Attack, List[Attack]]]
     training: Union[Training, List[Training]]
     optimizer: Union[Optimizer, List[Optimizer]]
     loss: Union[Loss, List[Loss]]

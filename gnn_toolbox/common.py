@@ -370,8 +370,9 @@ def prepare_dataset(
         edge_weight = data.edge_weight
     else:
         edge_weight = torch.ones(edge_index.shape[1])
-    
+    # edge_weight = torch.ones((edge_index.shape[1], 4))
     num_edges = edge_index.size(1)
+    
     is_undirected_graph = is_undirected(edge_index, edge_weight)
     if is_undirected_graph:
         if not make_undirected:
@@ -431,14 +432,19 @@ def prepare_dataset(
 
     split = splitter(dataset, data, labels, experiment)
     
-
-    experiment["model"]["params"].update(
-        {
+    if "params" in experiment["model"]:
+        experiment["model"]["params"].update(
+            {
+                "in_channels": attr.shape[1],
+                "out_channels": int(labels[~labels.isnan()].max() + 1),
+            }
+        )
+    else:
+        experiment["model"]["params"] = {
             "in_channels": attr.shape[1],
             "out_channels": int(labels[~labels.isnan()].max() + 1),
         }
-    )
-
+        
     return attr, adj, labels, split, num_edges
 
 
@@ -455,9 +461,7 @@ def splitter(dataset, data, labels, experiment):
     Returns:
         A dictionary containing the indices of the train, validation, and test sets.
     """
-    # print('qwe', experiment["dataset"]["train_ratio"])
-    # print('qwe', experiment["dataset"]["val_ratio"])
-    # print('qwe', experiment["dataset"]["test_ratio"])
+
     if "train_ratio" in experiment["dataset"] and "val_ratio" in experiment["dataset"] and "test_ratio" in experiment["dataset"]:
         logging.info(f"Using the provided train, val, test ratios for the splitting graph of dataset {experiment['dataset']['name']}.")
         return get_train_val_test(

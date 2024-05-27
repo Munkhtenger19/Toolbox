@@ -1,22 +1,22 @@
 output_dir: './output'
 cache_dir: './cache'
 experiment_templates:
-  - name: 'Invalid_Experiment'
-    seed: 'not_an_integer'  # Invalid data type for seed
+  - name: 'invalid'
+    seed: 'invalid'  # Invalid data type for seed
     device: 'gpu'  # Invalid device name
     model:
-      name: 'NonExistentModel'  # Invalid model name
+      name: 'invalid'  # Invalid model name
     dataset:
-      name: 'FakeDataset'  # Invalid dataset name
+      name: 'invalid'  # Invalid dataset name
     attack:
-      scope: 'planetwide'  # Invalid attack scope
-      type: 'confuse'  # Invalid attack type
-      name: 'MagicAttack'  # Invalid attack name
+      scope: 'invalid'  # Invalid attack scope
+      type: 'invalid'  # Invalid attack type
+      name: 'invalid'  # Invalid attack name
       epsilon: 2.0  # Epsilon out of range
     training:
       max_epochs: 10
       patience: 20  # Patience greater than max_epochs
     optimizer:
-      name: 'ImaginaryOptimizer'  # Invalid optimizer name
+      name: 'invalid'  # Invalid optimizer name
     loss:
-      name: 'MadeUpLoss'  # Invalid loss name
+      name: 'invalid'  # Invalid loss name

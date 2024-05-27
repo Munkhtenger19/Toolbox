@@ -311,41 +311,41 @@ class LocalAttack(GlobalAttack):
 # from torch_geometric.datasets import Planetoid
 # from torch_geometric.transforms import ToSparseTensor
 # from torch_geometric.utils import dense_to_sparse
-# class DenseAttack(BaseAttack):
-#     @typechecked
-#     def __init__(
-#         self,
-#         adj: Union[SparseTensor, TensorType],
-#         attr: TensorType,
-#         labels: TensorType,
-#         idx_attack: np.ndarray,
-#         model,
-#         device: Union[str, int, torch.device],
-#         make_undirected: bool = True,
-#         loss_type: str = "CE",
-#         **kwargs,
-#     ):
-#         if isinstance(adj, SparseTensor):
-#             adj = adj.to_dense()
-#             # adj = dense_to_sparse(adj)
-#             # cora = Planetoid(root='datasets', name='Cora',transform=ToSparseTensor(remove_edge_index=False))
-#             # data = cora[0]
-#             # row, col, edge_attr = data.adj_t.t().coo()
-#             # edge_index = torch.stack([row, col], dim=0)
-#             # adj = edge_index
-#             # adj = data.adj_t.to_dense()
-#             # ad
+class DenseAttack(BaseAttack):
+    @typechecked
+    def __init__(
+        self,
+        adj: Union[SparseTensor, TensorType],
+        attr: TensorType,
+        labels: TensorType,
+        idx_attack: np.ndarray,
+        model,
+        device: Union[str, int, torch.device],
+        make_undirected: bool = True,
+        loss_type: str = "CE",
+        **kwargs,
+    ):
+        if isinstance(adj, SparseTensor):
+            adj = adj.to_dense()
+            # adj = dense_to_sparse(adj)
+            # cora = Planetoid(root='datasets', name='Cora',transform=ToSparseTensor(remove_edge_index=False))
+            # data = cora[0]
+            # row, col, edge_attr = data.adj_t.t().coo()
+            # edge_index = torch.stack([row, col], dim=0)
+            # adj = edge_index
+            # adj = data.adj_t.to_dense()
+            # ad
 
-#         super().__init__(
-#             adj,
-#             attr,
-#             labels,
-#             idx_attack,
-#             model,
-#             device,
-#             loss_type=loss_type,
-#             make_undirected=make_undirected,
-#             **kwargs,
-#         )
+        super().__init__(
+            adj,
+            attr,
+            labels,
+            idx_attack,
+            model,
+            device,
+            loss_type=loss_type,
+            make_undirected=make_undirected,
+            **kwargs,
+        )
 
-#         self.n = adj.shape[0]
+        self.n = adj.shape[0]

@@ -133,3 +133,12 @@ def accuracy(logits: torch.Tensor, labels: torch.Tensor, split_idx: np.ndarray) 
         the Accuracy
     """
     return (logits.argmax(1)[split_idx] == labels[split_idx]).float().mean().item()
+
+def ensure_contiguousness(x, edge_idx, edge_weight):
+        if not x.is_sparse:
+            x = x.contiguous()
+        if hasattr(edge_idx, 'contiguous'):
+            edge_idx = edge_idx.contiguous()
+        if edge_weight is not None:
+            edge_weight = edge_weight.contiguous()
+        return x, edge_idx, edge_weight

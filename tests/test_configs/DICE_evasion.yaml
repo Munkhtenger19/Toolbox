@@ -1,0 +1,29 @@
+output_dir: './output'
+cache_dir: './cache'
+experiment_templates:
+  - name: 'GCN_Cora_DICE_Evasion'
+    seed: 0
+    device: 'cuda'
+    model:
+      name: 'GCN_DPR'
+      params:
+        hidden_channels: 64
+    dataset:
+      name: 'Cora'
+      make_undirected: True
+    attack:
+      scope: 'global'
+      type: 'evasion'
+      name: 'DICE'
+      epsilon: [0.05, 0.1, 0.15, 0.2, 0.25]
+    training:
+      max_epochs: 200
+      patience: 20
+    optimizer:
+      name: 'adam'
+      params:
+        lr: 0.01
+        weight_decay: 0.0005
+
+    loss:
+      name: 'CE'

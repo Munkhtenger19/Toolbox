@@ -656,7 +656,6 @@ class PRBCDAttack(GlobalAttack):
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}()'
-
 @register_global_attack("GRBCD")
 class GRBCDAttack(PRBCDAttack):
     r"""The Greedy Randomized Block Coordinate Descent (GRBCD) adversarial

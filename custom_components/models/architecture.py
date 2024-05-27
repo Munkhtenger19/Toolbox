@@ -68,7 +68,35 @@ class GCN2(nn.Module):
     #     layers = list(self.modules())
     #     for idx, m in enumerate(self.modules()):
     #         print(idx, '->', m)
-    
+
+@register_model('GAT')
+class GAT1():
+    def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2):
+        super().__init__()
+        self.norm = gcn_norm
+        self.conv1 = GATConv(in_channels, hidden_channels)
+        self.conv2 = GATConv(hidden_channels, out_channels)
+
+    def reset_parameters(self):
+        self.conv1.reset_parameters()
+        self.conv2.reset_parameters()
+
+    def forward(self, x, edge_index, edge_weight=None, **kwargs):
+        # Normalize edge indices only once:
+        # if not kwargs.get('skip_norm', False):
+        #     edge_index, edge_weight = self.norm(
+        #         edge_index,
+        #         edge_weight,
+        #         num_nodes=x.size(0),
+        #         add_self_loops=True,
+        #     )
+
+        x = self.conv1(x, edge_index, edge_weight).relu()
+        x = F.dropout(x, training=self.training)
+        x = self.conv2(x, edge_index, edge_weight)
+        return x
+
+
 # model = GCN(16, 16, 16)
 # print(model.hparams)
 

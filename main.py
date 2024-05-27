@@ -1,5 +1,6 @@
 import logging
 import sys
+import yaml
 
 from gnn_toolbox.cmd_args import parse_args, logger_setup, list_registered_components
 from gnn_toolbox.experiment_handler.exp_gen import generate_experiments_from_yaml
@@ -16,6 +17,7 @@ def main(file):
         artifact_manager = ArtifactManager(cache_dir)
         logging.info(f'Running {len(experiments)} experiment(s)')
         for curr_dir, experiment in experiments.items():
+            logging.info(f"Starting the experiment '{experiment['name']}' to be saved at the location '{curr_dir}'.")
             try:
                 result, experiment_cfg = run_experiment(experiment, curr_dir, artifact_manager)
                 experiment_logger = LogExperiment(curr_dir, experiment_cfg, result, experiments_config['csv_save'])
@@ -28,9 +30,9 @@ def main(file):
                 logging.exception(e)
                 logging.error(f"Failed to run this experiment and save the result, so skipping to the next experiment: {experiment}.")
                 continue
-    except FileExistsError as e:
+    except (FileExistsError, yaml.YAMLError) as e:
         logging.exception(e)
-        logging.error(f"Failed to load YAML file at {file}")
+        logging.error(f"Failed to load YAML file at the location {file}")
     except Exception as e:
         logging.exception(e)
         logging.error(f"There was an error generating experiments or creating directories for the experiment configuration file: {file}")

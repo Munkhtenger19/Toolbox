@@ -154,7 +154,7 @@ def train_and_evaluate(model, train_attr, train_adj, test_attr, test_adj, labels
     _, accuracy = evaluate_model(model=model, attr=test_attr, adj=test_adj, labels=labels, idx_test=split['test'], device=device)
  
     result.append({
-        'Test accuracy after best model retrieval': accuracy
+        'Test accuracy after the best model retrieval': accuracy
     })
     # if is_unattacked_model:
     #     artifact_manager.save_model(model, current_config, result)
