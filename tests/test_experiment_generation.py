@@ -51,7 +51,7 @@ def experiment_config_nested(test_output_dir):
                     'patience': '80'
                 },
                 'optimizer': {
-                    'name': ['adam', 'sgd'],
+                    'name': ['Adam', 'sgd'],
                     'params': {
                         'lr': '0.01',
                         'weight_decay': '0.0005'
@@ -133,14 +133,14 @@ def experiment_config_deep_nested(test_output_dir):
                 ],
                 'optimizer': [
                     {
-                        'name': ['adam', 'sgd'],
+                        'name': ['Adam', 'sgd'],
                         'params': {
                             'lr': '0.01',
                             'weight_decay': '0.0005'
                         }
                     },
                     {
-                        'name': ['adamW', 'PAdam'],
+                        'name': ['AdamW', 'PAdam'],
                         'params': {
                             'lr': '0.002',
                             'weight_decay': '0.00004'

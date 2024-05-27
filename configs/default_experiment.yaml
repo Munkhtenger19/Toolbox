@@ -69,7 +69,7 @@ experiment_templates:
     
     optimizer:
       # name: Adam
-      name: [Rprop, LBFGS]
+      name: [Adam]
       params:
         lr: 0.01
         # weight_decay: 0.0005

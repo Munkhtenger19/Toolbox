@@ -34,14 +34,6 @@ class MockModelWithEdgeWeightAndKeywordArgs:
     def forward(self, x, edge_index, edge_weight, **kwargs):
         pass
 
-class MockModelWithEdgeAttr:
-    def forward(self, x, edge_index, edge_attr):
-        pass
-
-class MockModelWithEdgeAttrAndKeywordArgs:
-    def forward(self, x, edge_index, edge_attr, **kwargs):
-        pass
-
 class MockModelWithInvalidParam:
     def forward(self, x, edge_index, invalid_param):
         pass
@@ -132,8 +124,6 @@ def test_individual_registration_functions(reset_registry, registration_function
     MockModelWithKeywordArgs,
     MockModelWithEdgeWeight,
     MockModelWithEdgeWeightAndKeywordArgs,
-    MockModelWithEdgeAttr,
-    MockModelWithEdgeAttrAndKeywordArgs
 ])
 def test_check_model_signature_valid(reset_registry, model_class):
     # These models have valid signatures

@@ -1,5 +1,6 @@
 import pytest
 import os
+import yaml
 from gnn_toolbox.experiment_handler.config_validator import (
     load_and_validate_yaml,
     Config,
@@ -58,7 +59,7 @@ def test_load_and_validate_yaml_file_not_found(tmp_path):
     config_path = tmp_path / "nonexistent_config.yaml"
     with pytest.raises(FileExistsError) as excinfo:
         load_and_validate_yaml(str(config_path))
-    assert "Failed to load YAML file" in str(excinfo.value)
+    assert "Failed to find or load YAML file" in str(excinfo.value)
 
 
 ##################### Validation classes tests #####################
@@ -127,8 +128,8 @@ def test_config_training_invalid(max_epochs, patience, error_msg):
 
 def test_config_optimizer():
     # Valid optimizer configuration
-    valid_optimizer = Optimizer(name='adam', params={'lr': 0.01})
-    assert valid_optimizer.name == 'adam'
+    valid_optimizer = Optimizer(name='Adam', params={'lr': 0.01})
+    assert valid_optimizer.name == 'Adam'
     assert valid_optimizer.params == {'lr': 0.01}
 
 def test_config_loss():
@@ -150,7 +151,7 @@ def test_config_experiment_template():
         dataset=Dataset(name='Cora'),
         attack=Attack(scope='global', type='evasion', name='DICE', epsilon=0.1),
         training=Training(max_epochs=200, patience=20),
-        optimizer=Optimizer(name='adam'),
+        optimizer=Optimizer(name='Adam'),
         loss=Loss(name='CE')
     )
     assert valid_template.name == 'TestExperiment'
@@ -168,7 +169,7 @@ def test_config_full():
                 dataset=Dataset(name='Cora'),
                 attack=Attack(scope='global', type='evasion', name='DICE', epsilon=0.1),
                 training=Training(max_epochs=200, patience=20),
-                optimizer=Optimizer(name='adam'),
+                optimizer=Optimizer(name='Adam'),
                 loss=Loss(name='CE')
             )
         ]

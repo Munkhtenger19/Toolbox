@@ -4,9 +4,11 @@ import logging
 from custom_components import *
 from gnn_toolbox.registration_handler.registry import registry
 def parse_args() -> argparse.Namespace:
-    """Parses the command line arguments."""
+    """
+    Parses the command line arguments.
+    """
     parser = argparse.ArgumentParser(description='GNN Robustness Toolbox: Run experiments to test GNNs against adversarial attacks from configuration YAML file.')
-    # parser = argparse.ArgumentParser(description=f'available models {registry["model"].keys()} \n available global attacks {registry["global_attack"].keys()} \n available local attacks {registry["local_attack"].keys()} \n available datasets {registry["dataset"].keys()} \n available transforms {registry["transform"].keys()} \n available optimizers {registry["optimizer"].keys()} \n available losses {registry["loss"].keys()}')
+
     parser.add_argument('--cfg', type=str, default= os.path.join('configs', 'default_experiment.yaml'), help='The configuration YAML file path. Default is configs/good_1.yaml.')
     
     parser.add_argument('--log', type=str, default='INFO', help='Logging level. Choose from DEBUG, INFO, WARNING, ERROR, CRITICAL.')
@@ -25,6 +27,9 @@ def list_registered_components():
 def logger_setup(logging_level):
     """
     Setup the logger for the experiment. Modified from https://docs.python.org/3/howto/logging.html
+
+    Args:
+        logging_level (str): _description_
     """
     levels = {
         'DEBUG': logging.DEBUG,

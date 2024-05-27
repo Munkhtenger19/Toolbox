@@ -21,7 +21,7 @@ experiment_templates:
       max_epochs: 200
       patience: 20
     optimizer:
-      name: 'adam'
+      name: 'Adam'
       params:
         lr: 0.01
     loss:
@@ -47,7 +47,7 @@ experiment_templates:
       max_epochs: 150
       patience: 15
     optimizer:
-      name: 'adam'
+      name: 'Adam'
       params:
         lr: 0.005
         momentum: 0.9

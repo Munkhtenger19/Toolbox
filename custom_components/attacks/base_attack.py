@@ -1,18 +1,15 @@
 """
-Code in this file is modified from: https://github.com/sigeisler/robustness_of_gnns_at_scale/tree/main/rgnn_at_scale
+Code in this file is adapted from: https://github.com/sigeisler/robustness_of_gnns_at_scale/tree/main/rgnn_at_scale
 """
 
-import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import Optional, Tuple, Union, List, Dict
-from torchtyping import TensorType, patch_typeguard
+from typing import Optional, Tuple, Union, Dict
 from typeguard import typechecked
 import logging
 import inspect
 
 import numpy as np
-import scipy.sparse as sp
 import torch
 from torch import Tensor
 from torch.nn import functional as F
@@ -49,9 +46,9 @@ class BaseAttack(ABC):
 
     def __init__(
         self,
-        adj: Union[SparseTensor, TensorType],
-        attr: TensorType,
-        labels: TensorType,
+        adj: SparseTensor,
+        attr: Tensor,
+        labels: Tensor,
         idx_attack: np.ndarray,
         model,
         device: Union[str, int, torch.device],
@@ -189,7 +186,7 @@ class LocalAttack(GlobalAttack):
         self,
         node_idx: int,
         perturbed_graph: Optional[
-            Union[SparseTensor, Tuple[TensorType, TensorType], None]
+            Union[SparseTensor, Tuple[Tensor, Tensor], None]
         ] = None,
     ) -> torch.Tensor:
         return self.get_logits(self.eval_model, node_idx, perturbed_graph)
@@ -221,7 +218,7 @@ class LocalAttack(GlobalAttack):
 
     @staticmethod
     def classification_statistics(
-        logits: TensorType, label: TensorType
+        logits: Tensor, label: Tensor
     ) -> Dict[str, float]:
         logits, label = F.log_softmax(logits.cpu(), dim=-1), label.cpu()
         logits = logits[0]
@@ -311,41 +308,41 @@ class LocalAttack(GlobalAttack):
 # from torch_geometric.datasets import Planetoid
 # from torch_geometric.transforms import ToSparseTensor
 # from torch_geometric.utils import dense_to_sparse
-class DenseAttack(BaseAttack):
-    @typechecked
-    def __init__(
-        self,
-        adj: Union[SparseTensor, TensorType],
-        attr: TensorType,
-        labels: TensorType,
-        idx_attack: np.ndarray,
-        model,
-        device: Union[str, int, torch.device],
-        make_undirected: bool = True,
-        loss_type: str = "CE",
-        **kwargs,
-    ):
-        if isinstance(adj, SparseTensor):
-            adj = adj.to_dense()
-            # adj = dense_to_sparse(adj)
-            # cora = Planetoid(root='datasets', name='Cora',transform=ToSparseTensor(remove_edge_index=False))
-            # data = cora[0]
-            # row, col, edge_attr = data.adj_t.t().coo()
-            # edge_index = torch.stack([row, col], dim=0)
-            # adj = edge_index
-            # adj = data.adj_t.to_dense()
-            # ad
+# class DenseAttack(BaseAttack):
+#     @typechecked
+#     def __init__(
+#         self,
+#         adj: Union[SparseTensor, Tensor],
+#         attr: Tensor,
+#         labels: Tensor,
+#         idx_attack: np.ndarray,
+#         model,
+#         device: Union[str, int, torch.device],
+#         make_undirected: bool = True,
+#         loss_type: str = "CE",
+#         **kwargs,
+#     ):
+#         if isinstance(adj, SparseTensor):
+#             adj = adj.to_dense()
+#             # adj = dense_to_sparse(adj)
+#             # cora = Planetoid(root='datasets', name='Cora',transform=ToSparseTensor(remove_edge_index=False))
+#             # data = cora[0]
+#             # row, col, edge_attr = data.adj_t.t().coo()
+#             # edge_index = torch.stack([row, col], dim=0)
+#             # adj = edge_index
+#             # adj = data.adj_t.to_dense()
+#             # ad
 
-        super().__init__(
-            adj,
-            attr,
-            labels,
-            idx_attack,
-            model,
-            device,
-            loss_type=loss_type,
-            make_undirected=make_undirected,
-            **kwargs,
-        )
+#         super().__init__(
+#             adj,
+#             attr,
+#             labels,
+#             idx_attack,
+#             model,
+#             device,
+#             loss_type=loss_type,
+#             make_undirected=make_undirected,
+#             **kwargs,
+#         )
 
-        self.n = adj.shape[0]
+#         self.n = adj.shape[0]

@@ -39,7 +39,7 @@ def experiment_cfg_evasion():
             'patience': '80'
         },
         'optimizer': {
-            'name': ['adam', 'sgd'],
+            'name': ['Adam', 'sgd'],
             'params': {
                 'lr': '0.01',
                 'weight_decay': '0.0005'
@@ -76,7 +76,7 @@ def experiment_cfg_poison():
             'patience': '80'
         },
         'optimizer': {
-            'name': ['adam', 'sgd'],
+            'name': ['Adam', 'sgd'],
             'params': {
                 'lr': '0.01',
                 'weight_decay': '0.0005'

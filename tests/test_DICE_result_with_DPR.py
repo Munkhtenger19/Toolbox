@@ -62,7 +62,7 @@ def test_experiment_results_against_deeprobust(config_path, deeprobust_results):
 
         # Assert that the accuracy of GRT is close to the expected accuracy of DeepRobust to ensure the training and attacking are implemented correctly
         obtained_clean_accuracy = all_result['clean_result'][-2]['accuracy_test']
-        obtained_attacked_accuracy = all_result['perturbed_result']['accuracy']
+        obtained_attacked_accuracy = all_result['perturbed_result']['accuracy of the model']
         
         assert obtained_clean_accuracy == pytest.approx(expected_clean_accuracy, abs=0.05)
         assert obtained_attacked_accuracy == pytest.approx(expected_attacked_accuracy, abs=0.05)  # Allow a tolerance of 0.05
