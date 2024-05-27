@@ -47,7 +47,7 @@ class Model(BaseModel):
 
 class Optimizer(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    name: str
+    name: Union[str, List[str]]
     params: Optional[Dict[str, PARAMS_TYPE]] = {}
     @model_validator(mode='after')
     def name_must_be_registered(self):
@@ -75,7 +75,7 @@ class Training(BaseModel):
     
 class Loss(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    name: str
+    name: Union[str, List[str]]
     params: Optional[Dict[str, PARAMS_TYPE]] = {}
     @model_validator(mode='after')
     def name_must_be_registered(self):

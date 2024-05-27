@@ -17,7 +17,7 @@ def main(file):
         artifact_manager = ArtifactManager(cache_dir)
         logging.info(f'Running {len(experiments)} experiment(s)')
         for curr_dir, experiment in experiments.items():
-            logging.info(f"Starting the experiment '{experiment['name']}' to be saved at the location '{curr_dir}'.")
+            logging.info(f"===== Starting the experiment '{experiment['name']}' to be saved at the location '{curr_dir}' =====")
             try:
                 result, experiment_cfg = run_experiment(experiment, curr_dir, artifact_manager)
                 experiment_logger = LogExperiment(curr_dir, experiment_cfg, result, experiments_config['csv_save'])

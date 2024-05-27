@@ -27,20 +27,20 @@ experiment_templates:
         #   params:
         #     value: 0.8
 
-    # attack:
-    #   # - scope: local
-    #   #   name: [LocalDICE]
-    #   #   type: poison
-    #   #   epsilon: [0.5]
-    #   #   nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-    #   # - scope: global
-    #   #   name: FGSM
-    #   #   type: poison
-    #   #   epsilon: [0.5]
-    #   - scope: global
-    #     name: DICE
-    #     type: poison
-    #     epsilon: [0.25]
+    attack:
+      # - scope: local
+      #   name: [LocalDICE]
+      #   type: poison
+      #   epsilon: [0.5]
+      #   nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+      # - scope: global
+      #   name: FGSM
+      #   type: poison
+      #   epsilon: [0.5]
+      - scope: global
+        name: DICE
+        type: poison
+        epsilon: [0.25]
 
       # - scope: local
       #   name: [LocalDICE]
@@ -64,14 +64,15 @@ experiment_templates:
 
 
     training:
-      max_epochs: 300
-      patience: 290
+      max_epochs: 101
+      patience: 90
     
     optimizer:
-      name: adam
+      # name: Adam
+      name: [Rprop, LBFGS]
       params:
         lr: 0.01
-        weight_decay: 0.0005
+        # weight_decay: 0.0005
 
     loss:
       name: CE

@@ -1,5 +1,5 @@
 """
-Code in this file is modified from: https://github.com/sigeisler/robustness_of_gnns_at_scale/tree/main/rgnn_at_scale
+Functions in this file are modified from: https://github.com/sigeisler/robustness_of_gnns_at_scale/tree/main/rgnn_at_scale
 """
 
 import logging
@@ -14,7 +14,7 @@ from typing import Tuple, Union, Optional, List, Dict, Any
 from torchtyping import TensorType
 from torch_sparse import SparseTensor
 from torch_geometric.utils import to_undirected, is_undirected
-
+from torch.utils.tensorboard import SummaryWriter
 def train(
     model,
     attr,
@@ -36,7 +36,7 @@ def train(
     attr: torch.Tensor [n, d]
         Dense attribute matrix.
     adj: torch.Tensor [n, n]
-        Dense adjacency matrix.
+        Sparse adjacency matrix.
     labels: torch.Tensor [n]
         Ground-truth labels of all nodes,
     idx_train: array-like [?]
@@ -56,7 +56,7 @@ def train(
     Returns
     -------
     train_val, trace_val: list
-        A tupole of lists of values of the validation loss during training.
+        A tuple of lists of values of the validation loss during training.
     """
     # trace_loss_train = []
     # trace_loss_val = []
@@ -270,53 +270,6 @@ def accuracy(
     """
     # print(logits.argmax(1)[split_idx] == labels[split_idx].float())
     return (logits.argmax(1)[split_idx] == labels[split_idx]).float().mean().item()
-
-
-# def random_splitter(labels, n_per_class=2, seed=None):
-#     """
-#     Randomly split the training data.
-
-#     Parameters
-#     ----------
-#     labels: array-like [num_nodes]
-#         The class labels
-#     n_per_class : int
-#         Number of samples per class
-#     seed: int
-#         Seed
-
-#     Returns
-#     -------
-#     split_train: array-like [n_per_class * nc]
-#         The indices of the training nodes
-#     split_val: array-like [n_per_class * nc]
-#         The indices of the validation nodes
-#     split_test array-like [num_nodes - 2*n_per_class * nc]
-#         The indices of the test nodes
-#     """
-#     if seed is not None:
-#         np.random.seed(seed)
-#     nc = labels.max() + 1
-
-#     split_train, split_val = [], []
-#     for label in range(int(nc)):
-#         perm = np.random.permutation((labels == label).nonzero()[0])
-#         split_train.append(perm[:n_per_class])
-#         split_val.append(perm[n_per_class : 2 * n_per_class])
-
-#     split_train = np.random.permutation(np.concatenate(split_train))
-#     split_val = np.random.permutation(np.concatenate(split_val))
-
-#     assert split_train.shape[0] == split_val.shape[0] == n_per_class * nc
-
-#     split_test = np.setdiff1d(
-#         np.arange(len(labels)), np.concatenate((split_train, split_val))
-#     )
-
-#     return dict(train = split_train, 
-#                 valid = split_val, 
-#                 test = split_test)
-
 
 def prepare_dataset(
     dataset,
@@ -562,3 +515,11 @@ def get_train_val_test(nnodes, train_ratio, val_ratio, test_ratio, stratify, see
 def is_directed(adj_matrix) -> bool:
     """Check if the graph is directed (adjacency matrix is not symmetric)."""
     return (adj_matrix != adj_matrix.t()).sum() != 0
+
+def tensorboard_log(experiment_path, results, prefix):
+    writer = SummaryWriter(f"{experiment_path}")
+    for result in results:
+        for key, value in result.items():
+            # if key != 'epoch':
+            writer.add_scalar(prefix + key, value, result['epoch'])
+

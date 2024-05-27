@@ -92,11 +92,10 @@ def check_model_signature(model):
     #         f"Invalid forward parameters. Allowed parameters are {allowed_signatures}."
     #     )
     required_params = ["x", "edge_index"]
-    optional_params = ["edge_weight", "edge_attr"]
+    optional_params = ["edge_weight"]
     allowed_signatures = [
         ["x", "edge_index"],
         ["x", "edge_index", "edge_weight"],
-        ["x", "edge_index", "edge_attr"]
     ]
 
     for param in required_params:
@@ -123,32 +122,4 @@ def check_forward_in_inheritance_chain(cls):
             return base.__dict__['forward']
     return None
 
-
-# def register_model(func):
-#     @wraps(func)
-#     def wrapper(*args, **kwargs):
-#         # Check the forward method's signature
-#         sig = inspect.signature(args[0].forward)
-#         parameters = [
-#             param.name for param in sig.parameters.values() if param.name != "self"
-#         ]
-
-#         # Define allowed signatures
-#         allowed_signatures = [
-#             ["x", "edge_index"],
-#             ["x", "edge_index", "edge_weight"],
-#             ["x", "edge_index", "edge_attr"],
-#         ]
-
-#         # Check if the model's parameters match any of the allowed signatures
-#         if parameters not in allowed_signatures:
-#             raise TypeError(
-#                 f"Invalid forward parameters. Allowed parameters are {allowed_signatures}."
-#             )
-
-#         # If valid, call the original function (usually the model's initializer)
-#         # return func(*args, **kwargs)
-
-#     return wrapper
-#     return
 

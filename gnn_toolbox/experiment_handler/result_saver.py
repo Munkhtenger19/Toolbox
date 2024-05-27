@@ -11,7 +11,7 @@ class LogExperiment:
         self.result = result
         self.log_to = Path(experiment_dir)
         self.csv_save = csv_save 
-        self.perturbed_result2csv = experiment_cfg['attack'].get('type') == 'poison'
+        self.perturbed_result2csv = experiment_cfg['attack'].get('type') == 'poison' and experiment_cfg['attack'].get('scope') == 'global'
     
     def save_results(self):
         self.log_experiment_config()
