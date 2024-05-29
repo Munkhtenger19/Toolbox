@@ -1,6 +1,6 @@
 import pytest
 import os
-import yaml
+
 from gnn_toolbox.experiment_handler.config_validator import (
     load_and_validate_yaml,
     Config,
@@ -86,28 +86,23 @@ def test_config_dataset():
         Dataset(name='InvalidDatasetName')
     assert "Invalid model name" in str(excinfo.value)
 
-@pytest.mark.parametrize("scope, attack_name, attack_type, epsilon, nodes, min_node_degree, nodes_topk", [
-    ('global', 'DICE', 'evasion', 0.1, None, None, None),  # Valid global attack
-    ('local', 'LocalDICE', 'evasion', 0.1, [1, 2, 3], None, None),  # Valid local attack with nodes
-    ('local', 'LocalPRBCD', 'poison', 0.2, None, 2, 10),  # Valid local attack with min_node_degree and nodes_topk
+@pytest.mark.parametrize("scope, attack_name, attack_type, epsilon, nodes", [
+    ('global', 'DICE', 'evasion', 0.1, None),  # Valid global attack
+    ('local', 'LocalDICE', 'evasion', 0.1, [1, 2, 3]),  # Valid local attack with nodes
 ])
-def test_config_attack_valid(scope, attack_name, attack_type, epsilon, nodes, min_node_degree, nodes_topk):
-    attack = Attack(scope=scope, type=attack_type, name=attack_name, epsilon=epsilon, nodes=nodes,
-                    min_node_degree=min_node_degree, nodes_topk=nodes_topk)
+def test_config_attack_valid(scope, attack_name, attack_type, epsilon, nodes):
+    attack = Attack(scope=scope, type=attack_type, name=attack_name, epsilon=epsilon, nodes=nodes)
     assert attack.scope == scope
     assert attack.name == attack_name
 
-@pytest.mark.parametrize("scope, attack_name, attack_type, epsilon, nodes, min_node_degree, nodes_topk, error_msg", [
-    ('invalid_scope', 'DICE', 'evasion', 0.1, None, None, None, "Input should be 'local' or 'global'"),  # Invalid attack scope
-    ('global', 'InvalidAttackName', 'evasion', 0.1, None, None, None, "Invalid model name"),  # Invalid attack name
-    ('local', 'LocalDICE', 'evasion', 0.1, None, None, None, "For local scope, either 'nodes' or both 'min_node_degree' and 'nodes_topk' must be provided."),  # Missing nodes for local attack
-    ('local', 'LocalPRBCD', 'poison', 0.2, None, 2, None, "For local scope, either 'nodes' or both 'min_node_degree' and 'nodes_topk' must be provided."),  # Missing nodes_topk for local attack
-    ('local', 'LocalPRBCD', 'poison', 0.2, None, None, 10, "For local scope, either 'nodes' or both 'min_node_degree' and 'nodes_topk' must be provided."),  # Missing min_node_degree for local attack
+@pytest.mark.parametrize("scope, attack_name, attack_type, epsilon, nodes, error_msg", [
+    ('invalid_scope', 'DICE', 'evasion', 0.1, None, "Input should be 'local' or 'global'"),  # Invalid attack scope
+    ('global', 'InvalidAttackName', 'evasion', 0.1, None, "Invalid model name"),  # Invalid attack name
+    ('local', 'LocalDICE', 'evasion', 0.1, None, "For local scope, 'nodes' must be provided."),  # Missing nodes for local attack
 ])
-def test_config_attack_invalid(scope, attack_name, attack_type, epsilon, nodes, min_node_degree, nodes_topk, error_msg):
+def test_config_attack_invalid(scope, attack_name, attack_type, epsilon, nodes, error_msg):
     with pytest.raises(ValueError) as excinfo:
-        Attack(scope=scope, type=attack_type, name=attack_name, epsilon=epsilon, nodes=nodes,
-               min_node_degree=min_node_degree, nodes_topk=nodes_topk)
+        Attack(scope=scope, type=attack_type, name=attack_name, epsilon=epsilon, nodes=nodes)
     assert error_msg in str(excinfo.value)
 
 @pytest.mark.parametrize("max_epochs, patience", [
@@ -181,7 +176,7 @@ def test_config_full():
     (0.7, 0.15, None, 0.7, 0.15, 0.15),  # Two ratios provided, test ratio calculated
     (None, 0.2, 0.7, 0.1, 0.2, 0.7),  # Two ratios provided, train ratio calculated
     (0.6, None, 0.3, 0.6, 0.1, 0.3),  # Two ratios provided, val ratio calculated
-    (0.5, 0.3, 0.2, 0.5, 0.3, 0.2),  # All three ratios provided, sum less than 1
+    (0.5, 0.3, 0.2, 0.5, 0.3, 0.2),  # All three ratios provided, sum less or equal than 1
 ])
 def test_check_ratios_valid(train_ratio, val_ratio, test_ratio, expected_train, expected_val, expected_test):
     result_train, result_val, result_test = check_ratios(train_ratio, val_ratio, test_ratio)

@@ -4,13 +4,26 @@ import logging
 from typing import List, Dict, Union, Optional, Literal
 from pydantic import BaseModel, ConfigDict, model_validator, PositiveInt, PositiveFloat, NonNegativeInt, field_validator
 import yaml.parser
-from gnn_toolbox.registration_handler.registry import registry
+from gnn_toolbox.registry import registry
 from custom_components import *
 
 PARAMS_TYPE = Union[List[int], int, List[float], float, List[str], str, List[bool], bool]
 
 
 def load_and_validate_yaml(yaml_path: str):
+    """Loads and validates the YAML file at the given path.
+
+    Args:
+        yaml_path (str): path of YAML file
+
+    Raises:
+        yaml.YAMLError: Raised when failed to parse YAML file
+        FileExistsError: Raised when failed to find or load YAML file
+        ValueError: Raised when validation error(s) encountered
+
+    Returns:
+        Dict: dictionary of validated YAML file
+    """
     try:
         with open(yaml_path, 'r') as file:
             yaml_data = yaml.safe_load(file)
@@ -143,14 +156,12 @@ class Attack(BaseModel):
     type: Literal['evasion', 'poison']
     epsilon: Union[List[Union[PositiveInt, PositiveFloat]], PositiveInt, PositiveFloat]
     nodes: Optional[List[NonNegativeInt]] = None
-    min_node_degree: Optional[PositiveInt] = None
-    nodes_topk: Optional[PositiveInt] = None
     params: Optional[Dict[str, PARAMS_TYPE]] = {}
     @model_validator(mode='after')
     def validate_scope(self):
         if self.scope == 'local':
-            if self.nodes is None and (self.min_node_degree is None or self.nodes_topk is None):
-                raise ValueError("For local scope, either 'nodes' or both 'min_node_degree' and 'nodes_topk' must be provided.")
+            if self.nodes is None:
+                raise ValueError("For local scope, 'nodes' must be provided.")
             check_if_value_registered(self.name, 'local_attack')
         elif self.scope == 'global':
             check_if_value_registered(self.name, 'global_attack')
@@ -180,30 +191,3 @@ class Config(BaseModel):
 def format_error_message(error):
     loc = f'{error["loc"][0]} index {error["loc"][1]}, {error["loc"][2]}'
     return f"Validation error location: '{loc}'. \n Error type: {error['type']} \n Error message: {error['msg']} \n Input that caused error: '{error['input']}'."
-
-
-    
-    
-import os
-dir_path = os.path.dirname(os.path.realpath(__file__))
-# # # Join the directory path and your file name
-file_path = os.path.join(dir_path, 'default_experiment.yaml')
-
-import torch.optim as optim
-
-# def optimizer(lr, weight_decay):
-#     print('lr', lr)
-#     print('weight_decay', weight_decay)
-# try:
-#     a = load_and_validate_yaml(file_path)
-#     # b = a.model_dump()
-#     print(a)
-# except Exception as e:
-#     print(e)
-# optimizer(**a.experiment_templates[0].optimizer.params)
-# print(a)
-# if a.experiment_templates[0].dataset[0].transforms[0].params:
-#     print('yes')
-# else:
-#     print('no')
-

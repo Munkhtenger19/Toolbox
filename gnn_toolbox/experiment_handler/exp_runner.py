@@ -2,8 +2,7 @@ from custom_components import *
 from gnn_toolbox.common import (prepare_dataset, 
                                 evaluate_model,
                                 train, 
-                                gen_local_attack_nodes,
-                                tensorboard_log)
+                                gen_local_attack_nodes)
 from gnn_toolbox.experiment_handler.create_modules import create_model, create_global_attack, create_local_attack, create_dataset, create_optimizer, create_loss
 
 import torch
@@ -21,12 +20,26 @@ from torch.utils.tensorboard import SummaryWriter
 import logging
 from gnn_toolbox.experiment_handler.exceptions import ModelError, AttackError, GlobalAttackError, GlobalAttackCreationError, LocalAttackError, LocalAttackCreationError, ModelTrainingError, ModelCreationError, DatasetCreationError, DataPreparationError
 
-def run_experiment(experiment, experiment_dir, artifact_manager):
-    # print('experiment', experiment)
-    
+def run_experiment(experiment: Dict, artifact_manager):
+    """Run a given experiment.
+
+    Args:
+        experiment (Dict): configuration of the experiment
+        artifact_manager: instance of the artifact manager
+
+    Raises:
+        DatasetCreationError: Raised when failed to instantiate the dataset
+        DataPreparationError: Raised when failed to prepare the dataset
+        ModelCreationError: Raised when failed to instantiate the model
+        ModelTrainingError: Raised when failed to train the model
+        AttackError: Raised when failed to execute the attack
+        Exception: Raised when failed to execute the experiment
+
+    Returns:
+        _type_: _description_
+    """
     seed_everything(experiment['seed'])
     device = experiment['device']
-    # graph_index =  experiment['dataset'].pop('graph_index', None)
     
     try:
         dataset = create_dataset(**experiment['dataset'])
@@ -85,6 +98,29 @@ def run_experiment(experiment, experiment_dir, artifact_manager):
     return all_result, experiment
 
 def execute_global_attack(experiment, attr, adj, labels, split, model, device, num_edges, make_undirected, untrained_model_state_dict, artifact_manager):
+    """Execute a global attack.
+
+    Args:
+        experiment (_type_): _description_
+        attr (_type_): _description_
+        adj (_type_): _description_
+        labels (_type_): _description_
+        split (_type_): _description_
+        model (_type_): _description_
+        device (_type_): _description_
+        num_edges (_type_): _description_
+        make_undirected (_type_): _description_
+        untrained_model_state_dict (_type_): _description_
+        artifact_manager (_type_): _description_
+
+    Raises:
+        GlobalAttackError: _description_
+        GlobalAttackError: _description_
+        GlobalAttackError: _description_
+
+    Returns:
+        _type_: _description_
+    """
     try:
         if experiment['attack']['type'] == 'poison':
             adversarial_attack, n_perturbations = instantiate_global_attack(experiment['attack'], attr, adj, labels, split['train'], model, device, num_edges, make_undirected)
@@ -98,10 +134,6 @@ def execute_global_attack(experiment, attr, adj, labels, split, model, device, n
                     raise GlobalAttackError(f"Error during executing 'attack' method of a global attack{experiment['attack']['name']}") from e
                 pert_adj, pert_attr = adversarial_attack.get_perturbations()
                 perturbed_result = train_and_evaluate(model, pert_attr, pert_adj, attr, adj, labels, split, device, experiment, artifact_manager, is_unattacked_model=False, untrained_model_state_dict = untrained_model_state_dict)
-                # except Exception as e:
-                #     logging.exception(e)
-                #     logging.error(f"Global poisoning adversarial attack {experiment['attack']['name']} failed to attack the model {experiment['model']['name']}")
-                #     return
         elif experiment['attack']['type'] == 'evasion':
             adversarial_attack, n_perturbations = instantiate_global_attack(
                 experiment['attack'], attr, adj, labels, split['test'], model, device, num_edges, make_undirected
@@ -122,11 +154,11 @@ def execute_global_attack(experiment, attr, adj, labels, split, model, device, n
         raise GlobalAttackError(f"Error during global attack {experiment['attack']['name']} execution") from e
     
 def clean_train(current_config, artifact_manager, model, attr, adj, labels, split, device):
+    """Train the model on clean data."""
     model_path, result = artifact_manager.model_exists(current_config, is_unattacked_model=True)
     if model_path and result:
         model.load_state_dict(torch.load(model_path))
         model.to(device)
-        # print('accuracy after model retrieved: ', evaluate_global(model, attr, adj, labels, split['test']), current_config.device)
         return result
     
     result = train_and_evaluate(model, attr, adj, attr, adj, labels, split, device, current_config, artifact_manager, is_unattacked_model=True)
@@ -194,19 +226,7 @@ def execute_local_attack(experiment, attr, adj, labels, split, model, device, ma
     results = []
     eps = experiment['attack']['epsilon']
     try:
-        if 'nodes' not in experiment['attack']:
-            epsilon_inverse = int(1 / eps)
-            
-            # min_node_degree = max(2, epsilon_inverse) if experiment['attack']['min_node_degree'] is None else experiment['attack']['min_node_degree']
-            min_node_degree =experiment['attack'].get('min_node_degree', max(2, epsilon_inverse))
-            
-            # topk = int(experiment.attack.topk) if experiment.attack.topk is not None else 10
-
-            topk = int(experiment['attack'].get('nodes_topk', 10))
-        
-            nodes = gen_local_attack_nodes(attr, adj, labels, model, split['train'], device, topk=topk, min_node_degree=min_node_degree)
-        else:
-            nodes = [int(i) for i in experiment['attack']['nodes']]
+        nodes = [int(i) for i in experiment['attack']['nodes']]
         
         for node in nodes:
             degree = adj[node].sum()
@@ -218,7 +238,6 @@ def execute_local_attack(experiment, attr, adj, labels, split, model, device, ma
             try:
                 attack_model.attack(n_perturbations, node_idx=node)
             except Exception as e:
-                # logging.exception(e)
                 raise LocalAttackError(
                     f"Error during executing 'attack' method of a global attack{experiment['attack']['name']} using with eps {eps} at node {node}.") from e
             
@@ -266,8 +285,7 @@ def execute_local_attack(experiment, attr, adj, labels, split, model, device, ma
                     {
                         'logits': logits_poisoning.cpu().numpy().tolist(),
                         **attack_model.classification_statistics(logits_poisoning.cpu(), labels[node].long().cpu())
-                    },
-                    # 'pyg_margin': attack_model._probability_margin_loss(victim(attr.to(device), adj.to(device)),labels, [node]).item()
+                    }
                 })
             logging.info(f'Node {node} with perturbed edges evaluated on model {experiment["model"]["name"]} using adversarial attack {experiment["attack"]["name"]} with epsilon {eps}')
             logging.debug(results[-1])

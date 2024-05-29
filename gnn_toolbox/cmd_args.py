@@ -2,7 +2,7 @@ import os
 import argparse
 import logging
 from custom_components import *
-from gnn_toolbox.registration_handler.registry import registry
+from gnn_toolbox.registry import registry
 def parse_args() -> argparse.Namespace:
     """
     Parses the command line arguments.
@@ -29,7 +29,7 @@ def logger_setup(logging_level):
     Setup the logger for the experiment. Modified from https://docs.python.org/3/howto/logging.html
 
     Args:
-        logging_level (str): _description_
+        logging_level (str): Logging level
     """
     levels = {
         'DEBUG': logging.DEBUG,

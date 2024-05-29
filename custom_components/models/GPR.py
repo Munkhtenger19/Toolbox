@@ -6,7 +6,7 @@ from torch_geometric.nn import GCNConv, SAGEConv, GATConv, APPNP, MessagePassing
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 import scipy.sparse
 import numpy as np
-from gnn_toolbox.registration_handler.register_components import register_model
+from gnn_toolbox.registry import register_model
 
 @register_model("GPRGNN")
 class GPRGNN(nn.Module):

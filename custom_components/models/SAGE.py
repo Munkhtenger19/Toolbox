@@ -7,7 +7,7 @@ from torch_geometric.nn.conv.gcn_conv import gcn_norm
 import scipy.sparse
 import numpy as np
 # from .base_model import BaseModel
-from gnn_toolbox.registration_handler.register_components import register_model
+from gnn_toolbox.registry import register_model
 
 @register_model("SAGE")
 class SAGE(nn.Module):

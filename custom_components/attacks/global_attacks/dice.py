@@ -1,3 +1,7 @@
+"""
+DICE implementation is adapted from: https://github.com/sigeisler/robustness_of_gnns_at_scale/blob/main/rgnn_at_scale/attacks/dice.py
+"""
+
 import random
 
 import numpy as np
@@ -7,16 +11,14 @@ from tqdm import tqdm
 
 import custom_components.utils as utils
 from custom_components.attacks.base_attack import GlobalAttack
-from gnn_toolbox.registration_handler.register_components import register_global_attack
+from gnn_toolbox.registry import register_global_attack
 
 @register_global_attack("DICE")
 class DICE(GlobalAttack):
     """DICE Attack
 
-    Parameters
-    ----------
-    add_ratio : float
-        ratio of the attack budget that is used to add new edges
+    Args:
+        add_ratio (float) : ratio of the attack budget that is used to add new edges
 
     """
 
@@ -25,7 +27,6 @@ class DICE(GlobalAttack):
 
         assert self.make_undirected, 'Attack only implemented for undirected graphs'
         self.edge_index, self.edge_weight = self.from_sparsetensor_to_edge_index(self.adj)
-        # self.edge_weight = self.edge_weight.float()
 
         # Create Symmetric Adjacency Matrix
         adj_symmetric_index, adj_symmetric_weights = utils.to_symmetric(self.edge_index, self.edge_weight, self.n)
@@ -43,7 +44,7 @@ class DICE(GlobalAttack):
             adj_symmetric_index(torch.LongTensor) : indices of sparse symmetrical matrix
 
         Returns:
-            dict: Adjacency matrix described as dictionar.
+            dict: Adjacency matrix described as dict.
                         keys are tuples (first_node, second_node)
                         values are 1
         """

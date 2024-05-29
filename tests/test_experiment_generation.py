@@ -179,7 +179,6 @@ def test_folder_exists(test_output_dir):
     assert folder_exists(test_output_dir)
     assert not folder_exists('non_existing_folder')
 
-
 def test_generate_experiments_from_yaml_nested_config(experiment_config_nested, experiment_config_deep_nested):
     experiments, cache_dir = generate_experiments_from_yaml(experiment_config_nested)
     assert len(experiments) == 48  # 2 seeds * 2 models * 3 datasets * 2 epsilons * 2 optimizers
@@ -240,14 +239,5 @@ def test_setup_directories(test_output_dir, resume_output):
         assert test_output_dir / 'TestExperiment_2' == experiment_dir2
     else:
         assert test_output_dir / 'TestExperiment_1' == experiment_dir2
-    #     existing_dirs = [d for d in Path(test_output_dir).glob(experiment_name + '*') if d.is_dir()]
-    #     if existing_dirs:
-    #         last_id = max([int(Path(existing_dir).name.split('_')[-1]) for existing_dir in existing_dirs])
-    #         expected_dir_name = f"{experiment_name}_{last_id + 1}"
-    #         assert 'TestExperiment_2' == expected_dir_name
-    #     else:
-    #         expected_dir_name = f"{experiment_name}_1"
-    # else:
-    #     expected_dir_name = f"{experiment_name}_1"
 
     

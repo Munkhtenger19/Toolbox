@@ -1,5 +1,5 @@
-import logging
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import Linear
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
@@ -8,9 +8,9 @@ from typing import Optional, Tuple
 from torch_geometric.typing import Adj, OptTensor
 from torch import Tensor
 from torch_sparse import SparseTensor, matmul
-import torch.nn as nn
+
 from custom_components.utils import ensure_contiguousness
-from gnn_toolbox.registration_handler.register_components import register_model
+from gnn_toolbox.registry import register_model
 
 @register_model("AirGNN")
 class AirGNN(nn.Module):
@@ -32,7 +32,6 @@ class AirGNN(nn.Module):
         self.lins.append(Linear(hidden_channels, out_channels))
 
         self.prop = AdaptiveMessagePassing(K=K, alpha=alpha, mode=model, lambda_amp = lambda_amp)
-        logging.info(self.prop)
 
         self.dropout = dropout
         self.weight_decay = weight_decay

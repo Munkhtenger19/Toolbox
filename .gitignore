@@ -18,6 +18,7 @@
 *.graph
 *.txt
 !requirements.txt
+!requirements-dev.txt
 *.csv
 *.npz
 *.pkl

@@ -1,40 +1,47 @@
 import pytest
-from gnn_toolbox.registration_handler.registry import (
+from gnn_toolbox.registry import (
+    register_dataset,
+    register_global_attack,
+    register_local_attack,
+    register_model,
+    register_optimizer,
+    register_transform,
+    register_loss,
     registry,
     register_component,
     get_from_registry,
-    check_model_signature,
+    check_model_forward_signature,
 )
-from gnn_toolbox.registration_handler.register_components import (
-    register_model,
-    register_global_attack,
-    register_local_attack,
-    register_dataset,
-    register_transform,
-    register_optimizer,
-    register_loss,
-)
-
 
 ############### Mock classes and fixture for arrange step ###############
 
 class MockModel:
+    def __init__(self, in_channels, out_channels):
+        pass
     def forward(self, x, edge_index):
         pass
 
 class MockModelWithKeywordArgs:
+    def __init__(self, in_channels, out_channels):
+        pass
     def forward(self, x, edge_index, **kwargs):
         pass
 
 class MockModelWithEdgeWeight:
+    def __init__(self, in_channels, out_channels):
+        pass
     def forward(self, x, edge_index, edge_weight):
         pass
 
 class MockModelWithEdgeWeightAndKeywordArgs:
+    def __init__(self, in_channels, out_channels):
+        pass
     def forward(self, x, edge_index, edge_weight, **kwargs):
         pass
 
 class MockModelWithInvalidParam:
+    def __init__(self, in_channels, out_channels):
+        pass
     def forward(self, x, edge_index, invalid_param):
         pass
 
@@ -65,13 +72,13 @@ def test_register_component_invalid_category(reset_registry):
     with pytest.raises(ValueError) as e:
         register_component("unknown_category", "TestComponent", lambda x: x)
         
-    assert "Category 'unknown_category' is not valid" in str(e.value)
+    assert "Type 'unknown_category' is not valid" in str(e.value)
 
 def test_register_component_duplicate_key(reset_registry):
     register_component("model", "TestModel", MockModel)
     with pytest.raises(KeyError) as e:
         register_component("model", "TestModel", MockModelWithKeywordArgs)
-    assert "Component with 'TestModel' already defined in category 'model'" in str(e.value)
+    assert "Component with 'TestModel' already defined in type 'model'" in str(e.value)
 
 
 ############### get_from_registry tests ###############
@@ -89,12 +96,12 @@ def test_get_from_registry(reset_registry, category, key, component):
 def test_get_from_registry_invalid_category(reset_registry):
     with pytest.raises(ValueError) as e:
         get_from_registry("invalid_category", "TestComponent", registry)
-    assert "Category 'invalid_category' is not recognized" in str(e.value)
+    assert "Given type 'invalid_category' is not recognized" in str(e.value)
 
 def test_get_from_registry_nonexistent_key(reset_registry):
     with pytest.raises(KeyError) as e:
         get_from_registry("model", "UnexistingModel", registry)
-    assert "Component 'UnexistingModel' not found in category 'model'" in str(e.value)
+    assert "Component 'UnexistingModel' not found in the type 'model'" in str(e.value)
 
 
 ############### Registration functions tests ###############
@@ -127,14 +134,14 @@ def test_individual_registration_functions(reset_registry, registration_function
 ])
 def test_check_model_signature_valid(reset_registry, model_class):
     # These models have valid signatures
-    check_model_signature(model_class)
+    check_model_forward_signature(model_class)
 
 def test_check_model_signature_invalid_param(reset_registry):
     with pytest.raises(TypeError) as e:
-        check_model_signature(MockModelWithInvalidParam)
+        check_model_forward_signature(MockModelWithInvalidParam)
     assert "Invalid parameter 'invalid_param'" in str(e.value)
 
 def test_check_model_signature_no_forward(reset_registry):
     with pytest.raises(TypeError) as e:
-        check_model_signature(MockModelWithoutForward)
+        check_model_forward_signature(MockModelWithoutForward)
     assert "The class MockModelWithoutForward or its ancestors do not define a 'forward' method." in str(e.value)

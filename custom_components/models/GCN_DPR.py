@@ -14,7 +14,7 @@ from torch_geometric.nn import GCNConv
 from torch_sparse import coalesce, SparseTensor, matmul
 from custom_components.utils import ensure_contiguousness
 
-from gnn_toolbox.registration_handler.register_components import register_model
+from gnn_toolbox.registry import register_model
 
 @register_model("GCN_DPR")
 class GCN(nn.Module):

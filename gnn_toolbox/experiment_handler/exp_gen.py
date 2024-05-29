@@ -1,13 +1,8 @@
-import os
-import yaml
-import json
 from pathlib import Path
 from itertools import product
 import shutil
-import pprint
 
-
-KEEP_AS_LIST =['attack.nodes', 'dataset.transforms']
+KEEP_AS_LIST = ['attack.nodes', 'dataset.transforms']
 
     
 def flatten(dictionary: dict, parent_key: str = '', sep: str = '.'):
@@ -15,7 +10,7 @@ def flatten(dictionary: dict, parent_key: str = '', sep: str = '.'):
     Flatten a nested dictionary, e.g. {'a':{'b': 2}, 'c': 3} becomes {'a.b':2, 'c':3}.
     Adapted from https://stackoverflow.com/questions/6027558/flatten-nested-dictionaries-compressing-keys
 
-    Parameters
+    Arguments
     ----------
     dictionary: dict to be flattened
     parent_key: string to prepend the key with
@@ -53,7 +48,6 @@ def unflatten(dictionary):
     return resultDict
 
 def _generate_combinations(config_dict):
-    # formatted_dict = { key:value[0] for key, value in config_dict.items() if isinstance(value, list) and len(value) == 1}
     parameter_dict = { key:value for key, value in config_dict.items() if isinstance(value, list) and key not in KEEP_AS_LIST}
     for combination in product(*(parameter_dict.values())):
         yield dict(zip(parameter_dict.keys(), combination))
@@ -62,7 +56,15 @@ def folder_exists(folder_path):
     folder = Path(folder_path)
     return folder.exists() and folder.is_dir()  
 
-def generate_experiments_from_yaml(experiments_config):
+def generate_experiments_from_yaml(experiments_config: dict):
+    """Generate experiments from a given experiment configuration dictionary.
+
+    Args:
+        experiments_config (dict): Experiment configuration dictionary
+
+    Returns:
+        dict: Dictionary of experiment directories and configurations
+    """
     output_dir = Path(experiments_config["output_dir"])
     cache_dir = Path(experiments_config["cache_dir"])
     resume_output = experiments_config.get("resume_output", False)
@@ -101,7 +103,18 @@ def generate_experiments_from_yaml(experiments_config):
             
     return all_experiments, cache_dir
 
-def setup_directories(base_dir, experiment_name, id, resume_output):
+def setup_directories(base_dir: str, experiment_name: str, id: int, resume_output: bool):
+    """Create a new experiment directory.
+
+    Args:
+        base_dir (str): main directory for storing experiments subdirectories
+        experiment_name (str): name of the experiment
+        id (int): id of the experiment
+        resume_output (bool): whether to resume output
+
+    Returns:
+        Path: Path to the new experiment directory
+    """
     base_dir = Path(base_dir)
     
     if resume_output:
@@ -113,85 +126,3 @@ def setup_directories(base_dir, experiment_name, id, resume_output):
     new_experiment_dir.mkdir(parents=True, exist_ok=True)
     
     return new_experiment_dir
-   
-
-
-def tensorboard_logger():
-    pass
-
-# dir_path = os.path.dirname(os.path.realpath(__file__))
-# # # # Join the directory path and your file name
-# file_path = os.path.join(dir_path, 'good_1.yaml')
-# b = generate_experiments_from_yaml(file_path)
-# print(len(b))
-# # print(i)
-# def foo(lr):
-#     print(lr)
-# graph_index = i['dataset'].pop('graph_index', None)
-
-# foo( **getattr(i['optimizer']['pz'], {'lr': 0.01}))
-
-# print(i)
-# print('graph_index', graph_index)
-# for transform in i.dataset.transforms:
-#     # desc = getattr(transform, 'name')
-#     desc = transform.get('name')
-    
-#     print(desc)
-# print(desc)
-# print
-# print(i)
-# s = i.attack.node
-# q = i.attack.params
-# print(s, q)
-
-# print()
-# print(i.model.params)
-# i['model']['params'].update({
-#     'in_channels': 2,
-#     'out_channels': 1,
-# })
-# print(i.model.params)
-# i.model.params.in_channels= 2
-# print(type(i['training']['lr']))
-# print(i.model.params)
-
-
-
-
-d = {
-    'model': {
-        'name': 'GCN',
-        'params': {
-            'in_channels': 1,
-            'out_channels': 1,
-            'hidden_channels': [32, 32],
-            'num_layers': 2,
-            'dropout': 0.5,
-        }
-    },
-    'dataset': {
-        'name': 'Cora',
-        'params': {
-            'root': 'data',
-            'name': 'Cora',
-        }
-    },
-    'trainer': {
-        'device': 'cuda',
-        'epochs': 1000,
-        'lr': 0.01,
-        'weight_decay': 5e-4,
-        'patience': 20,
-        'display_step': 1,
-    }
-
-}
-
-# q = (d['trainer']['wtf'])
-# print(q)
-# print(d)
-
-# next step is to use this dict to run experiment
-# find how to connect defined modules to run experiment using sacred or yacs
-# print(new_d)

@@ -12,7 +12,7 @@ from torch.optim import (
     Rprop,
 )
 from torch.nn.parameter import Parameter
-from gnn_toolbox.registration_handler.register_components import register_optimizer
+from gnn_toolbox.registry import register_optimizer
 from typing import Iterator
 
 

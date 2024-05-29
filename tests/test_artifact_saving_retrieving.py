@@ -101,12 +101,12 @@ def test_model_exists(artifact_manager):
 
     # Test if unattacked model exists
     model_path, loaded_result = artifact_manager.model_exists(params, is_unattacked_model=True)
-    assert os.path.exists(model_path)
+    assert Path(model_path).exists()
     assert loaded_result == result
 
     # Test if attacked model exists
     model_path, loaded_result = artifact_manager.model_exists(params, is_unattacked_model=False)
-    assert os.path.exists(model_path)
+    assert Path(model_path).exists()
     assert loaded_result == result
 
     # Test with non-existing model

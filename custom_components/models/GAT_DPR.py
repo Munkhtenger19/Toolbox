@@ -5,15 +5,9 @@ Adapted from DeepRobust project: https://github.com/DSE-MSU/DeepRobust/blob/mast
 
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-import torch
-from torch.nn.parameter import Parameter
-from torch.nn.modules.module import Module
 from torch_geometric.nn import GATConv
-# from .mygat_conv import GATConv
-# from .base_model import BaseModel
 
-from gnn_toolbox.registration_handler.register_components import register_model
+from gnn_toolbox.registry import register_model
 
 @register_model("GAT_DPR")
 class GAT(nn.Module):
@@ -22,8 +16,6 @@ class GAT(nn.Module):
             nlayers=2, with_bn=False, weight_decay=5e-4, with_bias=True):
 
         super(GAT, self).__init__()
-
-        # assert device is not None, "Please specify 'device'!"
 
         self.convs = nn.ModuleList([])
         if with_bn:

@@ -4,17 +4,17 @@ resume_output: True
 # esd: True
 experiment_templates:
   - name: Local attack_3
-    seed: [1]
+    seed: [4]
     device: cuda
     model:
-      - name: [GCN_DPR]
+      - name: [GCN2]
         params:
           hidden_channels: 64
     dataset:
       name: [Cora]
       # name: [CoraFull, CS, Physics, Computers, Photo, CoraCitationFull, DBLP, PubMedCitationFull, Reddit] # ogbn-arxiv 
       root: ./datasets
-      make_undirected: true
+      make_undirected: false
       # params:
       #   split: full
       # train_ratio: 0.6
@@ -28,19 +28,21 @@ experiment_templates:
         #     value: 0.8
 
     attack:
-      # - scope: local
-      #   name: [LocalDICE]
-      #   type: poison
-      #   epsilon: [0.5]
-      #   nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+      - scope: global
+        name: [PRBCD]
+        type: poison
+        epsilon: [0.4]
+        # nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        # nodes_topk: 10
+        # min_node_degree: 2
       # - scope: global
       #   name: FGSM
       #   type: poison
       #   epsilon: [0.5]
-      - scope: global
-        name: DICE
-        type: poison
-        epsilon: [0.25]
+      # - scope: global
+      #   name: GRBCD
+      #   type: poison
+      #   epsilon: [0.25]
 
       # - scope: local
       #   name: [LocalDICE]
@@ -64,9 +66,9 @@ experiment_templates:
 
 
     training:
-      max_epochs: 101
+      max_epochs: 102
       patience: 90
-    
+      
     optimizer:
       # name: Adam
       name: [Adam]

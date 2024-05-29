@@ -17,6 +17,14 @@ class ArtifactManager:
         return hashlib.md5(params_string.encode()).hexdigest()
                 
     def save_model(self, model, params, result, is_unattacked_model):
+        """Save the model and results to the cache directory.
+
+        Args:
+            model: Model to be saved
+            params: Experiment configuration
+            result: Model training result
+            is_unattacked_model (bool): Whether the model trained on unattacked or attacked data
+        """
         if is_unattacked_model:
             params = {key: value for key, value in params.items() if key != 'attack'}
             model_suffix = f"{params['model']['name']}_{params['dataset']['name']}.pt"
@@ -45,7 +53,15 @@ class ArtifactManager:
             logging.info(f'Saved the model {model_suffix} to {model_dir} for caching')
 
     def model_exists(self, params, is_unattacked_model):
-        """ Check if a model with the given parameters already exists. """
+        """Check if a model with the given experiment configuration already exists. If so, return the model path and result.
+
+        Args:
+            params: experiment configuration
+            is_unattacked_model (bool): Whether the model trained on unattacked or attacked data
+
+        Returns:
+            (Model path, result) or None: Model path and result if the model exists, otherwise None
+        """
         if is_unattacked_model:
             params = {key: value for key, value in params.items() if key != 'attack'}
         hash_id = self.hash_parameters(params)
@@ -75,53 +91,3 @@ class ArtifactManager:
                     result = None
             return model_path, result
         return None, None
-
-    
-def hash_parameters(params):
-    params_string = json.dumps(params, sort_keys=True)
-    return hashlib.md5(params_string.encode()).hexdigest()
-
-a = {'a':{
-    'wtf': 1,
-    'c':{
-        'd':{
-            'f': 1,
-        },
-        'w': 1,
-        'e': 2
-    },
-    }
-}
-    
-a2 = {'a':{
-    'c':{
-        'e': 2,
-        'w': 1,
-        'd':{
-            'f': 1
-        }
-    },
-    'wtf': 1
-    }
-}    
-a2_ =json.dumps(a2, sort_keys=True)
-a_ = (json.dumps(a, sort_keys=True))
-a_dict = json.loads(a_)
-# print(a_dict['a'])
-# if a_ == a2_:
-#     print('yes')
-# else:
-#     print('no')
-# print(hash_parameters(a))
-# print(hash_parameters(a2))
-# print(hash_parameters(a) == hash_parameters(a2))
-
-# params = {'a': 1, 'b': 2}
-# params2 = {'a': 1, 'b': 3}
-# params3 = {'b': 2, 'a':1}
-# params_string = json.dumps(params, sort_keys=True)
-# print(hashlib.sha256(params_string.encode()).hexdigest())
-# params_stringw = json.dumps(params2, sort_keys=True)
-# print(hashlib.sha256(params_stringw.encode()).hexdigest())
-# params_string3 = json.dumps(params3, sort_keys=True)
-# print(hashlib.sha256(params_string3.encode()).hexdigest())

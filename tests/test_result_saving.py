@@ -1,11 +1,11 @@
-# test_result_saver.py
 import pytest
-import os
 import json
 import shutil
 from unittest.mock import patch
 from gnn_toolbox.experiment_handler.result_saver import LogExperiment
 from pathlib import Path
+
+
 @pytest.fixture
 def experiment_dir(tmp_path):
     result_dir = tmp_path / "experiment_results"
@@ -109,8 +109,6 @@ def result():
     }
 
 def test_save_results_with_csv_poison(experiment_dir, experiment_cfg_poison, result):
-    # experiment_dir = Path(tmp_path / 'experiment_results')
-    # experiment_dir.mkdir(exist_ok=True)
     experiment_logger = LogExperiment(experiment_dir, experiment_cfg_poison, result, csv_save=True)
     experiment_logger.save_results()
 
@@ -160,6 +158,7 @@ def test_save_results_no_csv(experiment_dir, experiment_cfg_poison, result):
     experiment_logger = LogExperiment(experiment_dir, experiment_cfg_poison, result, csv_save=False)
     experiment_logger.save_results()
 
+    # No CSV at all
     assert Path(experiment_dir / 'experiment_config.json').exists()
     assert Path(experiment_dir / 'clean_result.json').exists()
     assert not Path(experiment_dir / 'clean_result.csv').exists()

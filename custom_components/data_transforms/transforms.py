@@ -5,7 +5,7 @@ from torch_geometric.transforms import (
     NormalizeFeatures,
     ToSparseTensor,
 )
-from gnn_toolbox.registration_handler.register_components import register_transform
+from gnn_toolbox.registry import register_transform
 
 register_transform("AddSelfLoops", AddSelfLoops)
 register_transform("Constant", Constant)

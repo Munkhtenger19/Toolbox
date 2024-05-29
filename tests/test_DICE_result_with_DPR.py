@@ -1,36 +1,10 @@
 import pytest
 import os
-import torch
-import numpy as np
+
 from gnn_toolbox.experiment_handler.exp_gen import generate_experiments_from_yaml
 from gnn_toolbox.experiment_handler.exp_runner import run_experiment
 from gnn_toolbox.experiment_handler.artifact_manager import ArtifactManager
 from gnn_toolbox.experiment_handler.config_validator import load_and_validate_yaml
-
-# @pytest.fixture
-# def experiment_config(tmp_path):
-#     return {
-#         'output_dir': str(tmp_path),
-#         'cache_dir': str(tmp_path / 'cache'),
-#         'experiment_templates': [
-#             {
-#                 'name': 'GCN_Cora_DICE_Evasion',
-#                 'seed': 0,  # Use a fixed seed for reproducibility
-#                 'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-#                 'model': {'name': 'GCN', 'params': {'hidden_channels': 64, 'dropout': 0.5}},
-#                 'dataset': {'name': 'Cora', 'make_undirected': True},
-#                 'attack': {
-#                     'scope': 'global',
-#                     'type': 'evasion',
-#                     'name': 'DICE',
-#                     'epsilon': [0.05, 0.1, 0.15, 0.2]  # Test with multiple epsilon values
-#                 },
-#                 'training': {'max_epochs': 200, 'patience': 20},
-#                 'optimizer': {'name': 'Adam', 'params': {'lr': 0.01}},
-#                 'loss': {'name': 'CrossEntropyLoss'}
-#             }
-#         ]
-#     }
 
 @pytest.fixture
 def config_path():
@@ -55,7 +29,7 @@ def test_experiment_results_against_deeprobust(config_path, deeprobust_results):
     artifact_manager = ArtifactManager(cache_dir)
 
     for experiment_dir, experiment in experiments.items():
-        all_result, _ = run_experiment(experiment, experiment_dir, artifact_manager)
+        all_result, _ = run_experiment(experiment, artifact_manager)
 
         epsilon = experiment['attack']['epsilon']
         expected_attacked_accuracy = deeprobust_results[epsilon]

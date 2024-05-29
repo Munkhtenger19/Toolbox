@@ -8,7 +8,7 @@ from torch_geometric.datasets import (
     # GNNBenchmarkDataset,
 )
 from ogb.nodeproppred import PygNodePropPredDataset
-from gnn_toolbox.registration_handler.register_components import register_dataset
+from gnn_toolbox.registry import register_dataset
 
 # Registering datasets: register_dataset(name, dataset)
 
