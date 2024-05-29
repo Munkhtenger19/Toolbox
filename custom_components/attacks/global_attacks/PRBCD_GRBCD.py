@@ -1,3 +1,5 @@
+"""Code in this file is adapted from the PyTorch Geometric library."""
+
 from collections import defaultdict
 from functools import partial
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union

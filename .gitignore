@@ -10,6 +10,7 @@
 *.log
 *.json
 **/*tfevents*
+**/*output*
 
 # datasets
 *.pt
