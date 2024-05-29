@@ -18,7 +18,6 @@ from gnn_toolbox.registry import register_global_attack
 LOSS_TYPE = Callable[[Tensor, Tensor, Optional[Tensor]], Tensor]
 
 
-
 @register_global_attack("PRBCD")
 class PRBCDAttack(GlobalAttack):
     r"""The Projected Randomized Block Coordinate Descent (PRBCD) adversarial
