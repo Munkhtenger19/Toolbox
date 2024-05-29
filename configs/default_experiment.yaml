@@ -1,121 +1,35 @@
-output_dir: ./output10
+output_dir: ./outputs
 resume_output: True
-# csv_save: True
-# esd: True
+csv_save: True
 experiment_templates:
-  - name: Local attack_3
-    seed: [6]
+  - name: experiments
+    seed: [0, 1, 2]
     device: cuda
     model:
-      - name: [GCN2]
+      - name: [GPRGNN, GCN_DPR, AirGNN]
         params:
           hidden_channels: 64
     dataset:
-      name: [Cora]
-      # name: [CoraFull, CS, Physics, Computers, Photo, CoraCitationFull, DBLP, PubMedCitationFull, Reddit] # ogbn-arxiv 
+      name: [Cora, CS]
       root: ./datasets
       make_undirected: false
-      # params:
-      #   split: full
-      # train_ratio: 0.6
-      # test_ratio: 0.2
-      # val_ratio: 0.2
-      # transforms:
-      #   - name: ToUndirected
-      #   - name: NormalizeFeatures
-        # - name: Constant
-        #   params:
-        #     value: 0.8
-
+      transforms:
+        - name: NormalizeFeatures
+        - name: Constant
+          params:
+            value: 0.8
     attack:
       - scope: global
-        name: [GRBCD]
+        name: [PRBCD, GRBCD, DICE]
         type: poison
-        epsilon: [0.4]
-        # nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        # nodes_topk: 10
-        # min_node_degree: 2
-      # - scope: global
-      #   name: FGSM
-      #   type: poison
-      #   epsilon: [0.5]
-      # - scope: global
-      #   name: GRBCD
-      #   type: poison
-      #   epsilon: [0.25]
-
-      # - scope: local
-      #   name: [LocalDICE]
-      #   type: evasion
-      #   epsilon: [0.6]
-      #   nodes_topk: 10
-      #   min_node_degree: 2
-
-        # params:
-        #   block_size: 100000
-      # - scope: local
-      #   name: [LocalPRBCD, LocalDICE]
-      #   type: [poison, evasion]
-      #   epsilon: [0.3]
-      #   nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-      # - scope: local
-      #   name: Nettack
-      #   type: evasion
-      #   epsilon: [0.2]
-      #   nodes: [0]
-
-
+        epsilon: [0.1, 0.2]
     training:
-      max_epochs: 102
-      patience: 90
-      
+      max_epochs: 100
+      patience: 80
     optimizer:
-      # name: Adam
-      name: [Adam]
+      name: [Adam, SGD]
       params:
         lr: 0.01
-        # weight_decay: 0.0005
-
+        weight_decay: 0.0005
     loss:
       name: CE
-    
-  # - name: Another Experiment
-  #   seed: [0, 1]
-  #   device: cuda
-
-  #   model:
-  #     name: GAT
-  #     params:
-  #       hidden_channels: [64, 128]
-    
-  #   dataset:
-  #     name: cora
-  #     root: ./datasets
-  #     make_undirected: True
-
-  #   attack:
-  #     - scope: global
-  #       name: DICE
-  #       type: poison
-  #       epsilon: [0.2, 0.3]
-  #     - scope: local
-  #       name: localDICE
-  #       type: evasion
-  #       epsilon: [0.05, 0.1, 0.2]
-  #       nodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-
-  #   training:
-  #     max_epochs: 400
-  #     patience: 200
-    
-  #   optimizer:
-  #     name: adam
-  #     params:
-  #       lr: [0.01]
-  #       weight_decay: [0.0005]
-
-  #   loss:
-  #     name: CE
-  
-  
-  

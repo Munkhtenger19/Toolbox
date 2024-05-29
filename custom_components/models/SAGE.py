@@ -2,11 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_sparse import SparseTensor, matmul
-# from torch_geometric.nn import SAGEConv, GATConv, APPNP, MessagePassing
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 import scipy.sparse
 import numpy as np
-# from .base_model import BaseModel
+
 from gnn_toolbox.registry import register_model
 
 @register_model("SAGE")

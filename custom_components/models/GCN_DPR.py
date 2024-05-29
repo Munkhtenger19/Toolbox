@@ -10,7 +10,7 @@ import torch
 from torch.nn.parameter import Parameter
 from torch.nn.modules.module import Module
 from torch_geometric.nn import GCNConv
-# from .base_model import BaseModel
+
 from torch_sparse import coalesce, SparseTensor, matmul
 from custom_components.utils import ensure_contiguousness
 

@@ -1,10 +1,15 @@
+"""
+Adapted from DeepRobust project: https://github.com/DSE-MSU/DeepRobust/blob/master/deeprobust/graph/defense_pyg/gcn.py
+"""
+
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_sparse import SparseTensor, matmul
 from torch_geometric.nn import GCNConv, SAGEConv, GATConv, APPNP, MessagePassing
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
-import scipy.sparse
+
 import numpy as np
 from gnn_toolbox.registry import register_model
 

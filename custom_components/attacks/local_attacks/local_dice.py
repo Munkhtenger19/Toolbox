@@ -1,3 +1,7 @@
+"""
+DICE implementation is adapted from: https://github.com/sigeisler/robustness_of_gnns_at_scale/blob/main/rgnn_at_scale/attacks/local_dice.py
+"""
+
 import torch
 from torch_sparse import SparseTensor
 
