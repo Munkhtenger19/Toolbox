@@ -7,19 +7,16 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 from tqdm import tqdm
-# from torch_sparse import SparseTensor
 import torch_sparse
-import scipy.sparse as sp
-
 from torch_geometric.utils import coalesce, to_undirected
+
 from custom_components.attacks.base_attack import GlobalAttack
 from gnn_toolbox.registry import register_global_attack
+
 # (predictions, labels, ids/mask) -> Tensor with one element
 LOSS_TYPE = Callable[[Tensor, Tensor, Optional[Tensor]], Tensor]
-from torch_geometric.seed import seed_everything
 
-
-@register_global_attack("PRBCD2")
+@register_global_attack("PRBCD")
 class PRBCDAttack(GlobalAttack):
     r"""The Projected Randomized Block Coordinate Descent (PRBCD) adversarial
     attack from the `Robustness of Graph Neural Networks at Scale
@@ -169,7 +166,6 @@ class PRBCDAttack(GlobalAttack):
 
         :rtype: (:class:`torch.Tensor`, :class:`torch.Tensor`)
         """
-        seed_everything(42)
         self.attacked_model.eval()
 
         self.device = x.device
