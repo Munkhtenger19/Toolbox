@@ -239,7 +239,7 @@ def evaluate_model(
         torch.cuda.empty_cache()
         torch.cuda.synchronize()
         memory = torch.cuda.memory_allocated() / (1024**3)
-        logging.info(
+        logging.debug(
             f"Cuda Memory of evaluating the model: {memory}"
         )
     
