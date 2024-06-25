@@ -30,10 +30,9 @@ experiment_templates:
     seed: 42
     device: 'cpu'
     model:
-      name: 'GCN2'
+      name: 'GCN_DPR'
       params:
-        heads: 8
-        dropout: 0.6
+        hidden_channels: 32
     dataset:
       name: 'Citeseer'
       make_undirected: True

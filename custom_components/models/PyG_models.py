@@ -43,8 +43,8 @@ class GATWrapper(torch.nn.Module):
         return self.gat(x, edge_index)
 
 
-@register_model('GCN2')
-class GCN2(nn.Module):
+@register_model('myCustomGCN')
+class customGCN(nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels):
         super().__init__()
         self.norm = gcn_norm
