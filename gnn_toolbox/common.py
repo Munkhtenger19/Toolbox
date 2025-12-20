@@ -351,13 +351,13 @@ def prepare_dataset(
         experiment["model"]["params"].update(
             {
                 "in_channels": attr.shape[1],
-                "out_channels": int(labels[~labels.isnan()].max() + 1),
+                "out_channels": int(labels.max() + 1),
             }
         )
     else:
         experiment["model"]["params"] = {
             "in_channels": attr.shape[1],
-            "out_channels": int(labels[~labels.isnan()].max() + 1),
+            "out_channels": int(labels.max() + 1),
         }
         
     return attr, adj, labels, split, num_edges

@@ -62,6 +62,8 @@ def run_experiment(experiment: Dict, artifact_manager: ArtifactManager):
     try:
         attr, adj, labels, split, num_edges = prepare_dataset(dataset, experiment)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise DataPreparationError(
             f"Failed to prepare the dataset {experiment['dataset']['name']}."
         ) from e

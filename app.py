@@ -42,11 +42,18 @@ if attack_scope != "None":
     selected_attacks = st.sidebar.multiselect("Attack Method", available_attacks, default=[a for a in ["PRBCD", "DICE"] if a in available_attacks])
     attack_strategies = st.sidebar.multiselect("Attack Strategy", ["poison", "evasion"], default=["poison"])
 
+import torch
+
 # 2. Hyperparameters
 st.sidebar.subheader("Training Params")
-epochs = st.sidebar.number_input("Max Epochs", min_value=1, value=70)
-patience = st.sidebar.number_input("Patience", min_value=1, value=50)
-device = st.sidebar.selectbox("Device", ["cpu", "cuda"], index=1)
+epochs = st.sidebar.number_input("Max Epochs", min_value=1, value=50)
+patience = st.sidebar.number_input("Patience", min_value=1, value=40)
+
+available_devices = ["cpu"]
+if torch.cuda.is_available():
+    available_devices.append("cuda")
+
+device = st.sidebar.selectbox("Device", available_devices, index=0)
 
 st.sidebar.subheader("Optimizer & Loss")
 selected_optimizers = st.sidebar.multiselect("Optimizer", available_optimizers, default=[o for o in ["Adam"] if o in available_optimizers])
