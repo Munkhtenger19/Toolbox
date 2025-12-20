@@ -34,4 +34,5 @@
 *.index
 
 #venv
+.venv/
 grt_env/

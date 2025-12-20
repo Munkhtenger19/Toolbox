@@ -26,21 +26,74 @@ st.sidebar.header("Experiment Configuration")
 available_models = list(registry['model'].keys())
 available_datasets = list(registry['dataset'].keys())
 available_attacks = list(registry['global_attack'].keys()) + list(registry['local_attack'].keys())
+available_optimizers = list(registry['optimizer'].keys())
+available_losses = list(registry['loss'].keys())
+available_transforms = list(registry['transform'].keys())
 
-selected_model = st.sidebar.selectbox("Model", available_models, index=0)
-selected_dataset = st.sidebar.selectbox("Dataset", available_datasets, index=0)
-attack_type = st.sidebar.selectbox("Attack Type", ["None", "Global", "Local"], index=0)
+selected_models = st.sidebar.multiselect("Model", available_models, default=[m for m in ["GPRGNN", "AirGNN"] if m in available_models])
+selected_datasets = st.sidebar.multiselect("Dataset", available_datasets, default=[d for d in ["Cora"] if d in available_datasets])
+attack_scope = st.sidebar.selectbox("Attack Scope", ["None", "Global", "Local"], index=1)
 
-selected_attack = None
-if attack_type != "None":
+selected_attacks = []
+attack_strategies = ["poison"] # Default
+
+if attack_scope != "None":
     # Filter attacks based on type if possible, or show all
-    selected_attack = st.sidebar.selectbox("Attack Method", available_attacks)
+    selected_attacks = st.sidebar.multiselect("Attack Method", available_attacks, default=[a for a in ["PRBCD", "DICE"] if a in available_attacks])
+    attack_strategies = st.sidebar.multiselect("Attack Strategy", ["poison", "evasion"], default=["poison"])
 
 # 2. Hyperparameters
 st.sidebar.subheader("Training Params")
-epochs = st.sidebar.number_input("Max Epochs", min_value=1, value=100)
+epochs = st.sidebar.number_input("Max Epochs", min_value=1, value=70)
 patience = st.sidebar.number_input("Patience", min_value=1, value=50)
-device = st.sidebar.selectbox("Device", ["cpu", "cuda"], index=0)
+device = st.sidebar.selectbox("Device", ["cpu", "cuda"], index=1)
+
+st.sidebar.subheader("Optimizer & Loss")
+selected_optimizers = st.sidebar.multiselect("Optimizer", available_optimizers, default=[o for o in ["Adam"] if o in available_optimizers])
+learning_rate = st.sidebar.number_input("Learning Rate", value=0.01, format="%.4f")
+weight_decay = st.sidebar.number_input("Weight Decay", value=0.0005, format="%.5f")
+
+selected_losses = st.sidebar.multiselect("Loss Function", available_losses, default=["CE"] if "CE" in available_losses else [available_losses[0]])
+
+st.sidebar.subheader("Data Transforms")
+selected_transforms = st.sidebar.multiselect("Select Transforms", available_transforms, default=[t for t in ["NormalizeFeatures"] if t in available_transforms])
+make_undirected = st.sidebar.checkbox("Make Undirected", value=False)
+binary_attr = st.sidebar.checkbox("Binary Attributes", value=False)
+
+st.sidebar.subheader("Data Split")
+train_ratio = st.sidebar.slider("Train Ratio", 0.0, 1.0, 0.1)
+val_ratio = st.sidebar.slider("Validation Ratio", 0.0, 1.0, 0.1)
+test_ratio = st.sidebar.slider("Test Ratio", 0.0, 1.0, 0.8)
+
+st.sidebar.subheader("Experiment Settings")
+seeds_input = st.sidebar.text_input("Seeds (comma separated)", value="0")
+seeds = [int(s.strip()) for s in seeds_input.split(",") if s.strip().isdigit()]
+resume_output = st.sidebar.checkbox("Resume Output", value=True)
+csv_save = st.sidebar.checkbox("Save CSV", value=True)
+
+# Attack Params
+attack_params = {}
+epsilon = 0.05
+target_nodes = []
+
+if attack_scope != "None" and selected_attacks:
+    st.sidebar.subheader("Attack Params")
+    epsilon_input = st.sidebar.text_input("Perturbation Budget (epsilon, comma separated)", value="0.05")
+    epsilon = [float(e.strip()) for e in epsilon_input.split(",") if e.strip()]
+    
+    if attack_scope == "Local":
+        target_nodes_input = st.sidebar.text_input("Target Nodes (comma separated)", value="0")
+        target_nodes = [int(n.strip()) for n in target_nodes_input.split(",") if n.strip().isdigit()]
+
+    if "DICE" in selected_attacks:
+        add_ratio = st.sidebar.slider("Add Ratio (DICE)", 0.0, 1.0, 0.6, 0.1)
+        attack_params["add_ratio"] = add_ratio
+    
+    if any(a in selected_attacks for a in ["PRBCD", "GRBCD"]):
+        block_size = st.sidebar.number_input("Block Size (PRBCD/GRBCD)", min_value=100, value=200000, step=1000)
+        attack_epochs = st.sidebar.number_input("Attack Epochs (PRBCD/GRBCD)", min_value=1, value=80)
+        attack_params["block_size"] = block_size
+        attack_params["epochs"] = attack_epochs
 
 # --- Main Area: Config Preview & Execution ---
 
@@ -49,48 +102,60 @@ device = st.sidebar.selectbox("Device", ["cpu", "cuda"], index=0)
 experiment_config = {
     "output_dir": "./output_ui",
     "cache_dir": "./cache_ui",
-    "resume_output": False,
-    "csv_save": True,
+    "resume_output": resume_output,
+    "csv_save": csv_save,
     "experiment_templates": [
         {
-            "name": f"{selected_model}_{selected_dataset}_Exp",
-            "seed": [0],
+            "name": "Streamlit_Experiment",
+            "seed": seeds,
             "device": device,
             "model": {
-                "name": selected_model,
+                "name": selected_models,
                 "params": {
-                    "in_channels": 1433, # Default for Cora, logic needed for dynamic sizing
+                    # "in_channels": 1433, # Removed: Inferred dynamically by prepare_dataset
                     "hidden_channels": 64,
-                    "out_channels": 7,
+                    # "out_channels": 7,   # Removed: Inferred dynamically by prepare_dataset
                     "dropout": 0.5
                 }
             },
             "dataset": {
-                "name": selected_dataset,
-                "root": "./datasets"
+                "name": selected_datasets,
+                "root": "./datasets",
+                "transforms": [{"name": t, "params": {"value": 0.8}} if t == "Constant" else {"name": t} for t in selected_transforms],
+                "make_undirected": make_undirected,
+                "train_ratio": train_ratio,
+                "val_ratio": val_ratio,
+                "test_ratio": test_ratio
             },
             "training": {
                 "max_epochs": int(epochs),
                 "patience": int(patience)
             },
             "optimizer": {
-                "name": "Adam",
-                "params": {"lr": 0.01, "weight_decay": 5e-4}
+                "name": selected_optimizers,
+                "params": {"lr": learning_rate, "weight_decay": weight_decay}
             },
             "loss": {
-                "name": "CE"
+                "name": selected_losses
             }
         }
     ]
 }
 
 # Add attack config if selected
-if attack_type != "None" and selected_attack:
-    experiment_config["experiment_templates"][0]["attack"] = {
-        "name": selected_attack,
-        "scope": attack_type.lower(),
-        "params": {"epsilon": 0.05} # Default param, could be expanded
+if attack_scope != "None" and selected_attacks:
+    attack_conf = {
+        "name": selected_attacks,
+        "scope": attack_scope.lower(),
+        "type": attack_strategies,
+        "epsilon": epsilon,
+        "binary_attr": binary_attr,
+        **attack_params
     }
+    if attack_scope == "Local":
+        attack_conf["nodes"] = target_nodes
+
+    experiment_config["experiment_templates"][0]["attack"] = attack_conf
 
 # Tabs for different views
 tab1, tab2 = st.tabs(["Configuration", "Results"])
@@ -119,15 +184,29 @@ with tab1:
                     result, experiment_cfg = run_experiment(experiment, artifact_manager)
                     
                     # Extract key metrics for display
-                    clean_acc = result.get('clean_result', [{}])[-1].get('accuracy_test', 'N/A')
+                    clean_res = result.get('clean_result', [])
+                    clean_acc = 'N/A'
+                    if isinstance(clean_res, list) and clean_res:
+                        clean_acc = clean_res[-1].get('Test accuracy after the best model retrieval', 'N/A')
+
                     perturbed_acc = 'N/A'
-                    if 'perturbed_result' in result and result['perturbed_result']:
-                         perturbed_acc = result['perturbed_result'].get('accuracy of the model', 'N/A')
+                    pert_res = result.get('perturbed_result', [])
+                    if isinstance(pert_res, list) and pert_res:
+                         perturbed_acc = pert_res[-1].get('Test accuracy after the best model retrieval', 'N/A')
+
+                    attack_name = experiment.get('attack', {}).get('name', 'None')
+                    epsilon = experiment.get('attack', {}).get('epsilon', 'N/A')
+                    attack_type = experiment.get('attack', {}).get('type', 'N/A')
+                    seed = experiment.get('seed', 'N/A')
 
                     results_list.append({
                         "Experiment": experiment['name'],
                         "Model": experiment['model']['name'],
                         "Dataset": experiment['dataset']['name'],
+                        "Attack": attack_name,
+                        "Type": attack_type,
+                        "Epsilon": epsilon,
+                        "Seed": seed,
                         "Clean Accuracy": clean_acc,
                         "Perturbed Accuracy": perturbed_acc
                     })
