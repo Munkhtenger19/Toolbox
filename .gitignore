@@ -32,3 +32,6 @@
 *.x
 *.y
 *.index
+
+#venv
+grt_env/
