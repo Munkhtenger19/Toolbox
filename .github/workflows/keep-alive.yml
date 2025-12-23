@@ -1,0 +1,15 @@
+name: Keep Streamlit App Awake
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: 
+
+jobs:
+  ping_app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping App URL
+        run: |
+          curl -I --fail https://gnn-robustness.streamlit.app/
+          echo "Ping successful!"
