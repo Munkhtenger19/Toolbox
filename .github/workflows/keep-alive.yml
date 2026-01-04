@@ -2,14 +2,61 @@ name: Keep Streamlit App Awake
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
-  workflow_dispatch: 
+    - cron: "0 */2 * * *"
+  workflow_dispatch: # Allows manual triggering
 
 jobs:
-  ping_app:
+  wake_app:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping App URL
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install Playwright
         run: |
-          curl -I --fail https://gnn-robustness.streamlit.app/
-          echo "Ping successful!"
+          pip install playwright
+          playwright install chromium
+
+      - name: Run Wake-up Script
+        run: |
+          python -c "
+          from playwright.sync_api import sync_playwright
+          import time
+
+          with sync_playwright() as p:
+              print('Launching browser...')
+              browser = p.chromium.launch(headless=True)
+              page = browser.new_page()
+              
+              try:
+                  # Visit the app
+                  page.goto('https://gnn-robustness.streamlit.app/', timeout=60000)
+                  print('Page loaded.')
+
+                  # Wait for app to load/initialize
+                  time.sleep(10)
+                  
+                  # Check for the 'Yes, get this app back up' button
+                  try:
+                      wake_btn = page.get_by_text('Yes, get this app back up')
+                      if wake_btn.count() > 0:
+                          print('Sleep detected. Clicking wake up button...')
+                          wake_btn.click()
+                          # Wait for the oven/booting process
+                          page.wait_for_load_state('networkidle', timeout=60000)
+                          print('App is waking up!')
+                      else:
+                          print('No wake-up button found. App is likely running.')
+                  except Exception as e:
+                      print(f'Button check skipped: {e}')
+
+              except Exception as e:
+                  print(f'Error visiting page: {e}')
+              finally:
+                  browser.close()
+          "
